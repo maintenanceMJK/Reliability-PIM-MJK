@@ -1,0 +1,28 @@
+name: Auto Email Maintenance Report
+on:
+  schedule:
+    - cron: '0 0 * * 1' # Senin 07:00 WIB
+  workflow_dispatch:
+jobs:
+  email:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unduh report dari Edge Function
+        run: |
+          curl --fail --location "${{ secrets.SUPABASE_EXPORT_URL }}" \
+            -H "Authorization: Bearer ${{ secrets.REPORT_JOB_TOKEN }}" \
+            -o maintenance-report.xlsx
+      - name: Kirim melalui Gmail SMTP
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.GMAIL_USERNAME }}
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          subject: Maintenance Work Management - Laporan Otomatis
+          to: ${{ secrets.REPORT_RECIPIENTS }}
+          from: Reliability PT. Padi Indonesia Maju - Mojokerto
+          body: Terlampir laporan Maintenance Work Management terbaru.
+          attachments: maintenance-report.xlsx
