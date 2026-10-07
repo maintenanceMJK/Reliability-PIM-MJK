@@ -8,5 +8,169 @@
 <section id="usersPage" class="page hidden"><div class="panel"><div class="panel-head"><h3>Kelola Pengguna</h3><button id="userAddBtn" class="btn primary">+ Undang Pengguna</button></div><div class="table-wrap"><table><thead><tr><th>Nama</th><th>Email</th><th>Role</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="userTable"></tbody></table></div></div></section>
 </main></div>
 <div id="modal" class="modal hidden"><div class="modal-card"><div class="modal-head"><h2 id="modalTitle">Tambah Pekerjaan</h2><button id="modalClose" class="icon-btn">×</button></div><form id="workForm" class="form-grid"><input id="workId" type="hidden"><label class="span2">Judul pekerjaan<input id="title" required></label><label>Equipment<select id="equipmentId" required></select></label><label>PIC<input id="pic" required></label><label>Jenis<select id="type" required><option>Preventive Maintenance</option><option>Condition Monitoring</option><option>Corrective Maintenance</option><option>Others</option></select></label><label>Prioritas<select id="priority" required><option>Low</option><option selected>Medium</option><option>High</option><option>Critical</option></select></label><label>Tanggal rencana<input id="dueDate" type="date"></label><label>Status<select id="status"><option>Open</option><option>Proses</option><option>Selesai</option></select></label><label class="span2">Deskripsi<textarea id="description" rows="4"></textarea></label><label>Foto sebelum<input id="beforePhoto" type="file" accept="image/*" capture="environment"></label><label>Foto sesudah<input id="afterPhoto" type="file" accept="image/*" capture="environment"></label><div class="span2 modal-actions"><button type="button" id="cancelBtn" class="btn ghost">Batal</button><button type="submit" class="btn primary">Simpan</button></div></form></div></div>
-<div id="signatureModal" class="modal hidden"><div class="modal-card signature-card"><div class="modal-head"><h2>Paraf Verifikasi</h2><button class="icon-btn" data-close-sign>×</button></div><p>Gambar paraf pada area di bawah. Verifikasi hanya dapat dilakukan setelah paraf disimpan.</p><canvas id="signatureCanvas" width="700" height="260"></canvas><div class="modal-actions"><button id="clearSignature" class="btn ghost">Hapus</button><button id="saveSignature" class="btn primary">Simpan & Verifikasi</button></div></div></div><div id="toast" class="toast"></div>
+<div id="signatureModal" class="modal hidden">
+<div id="detailModal" class="modal hidden">
+  <div class="modal-card detail-card">
+    <div class="modal-head">
+      <div>
+        <h2>Detail Pekerjaan</h2>
+        <p class="muted">
+          Informasi pekerjaan hanya dapat dilihat.
+        </p>
+      </div>
+
+      <button
+        id="detailModalClose"
+        class="icon-btn"
+        type="button"
+      >
+        ×
+      </button>
+    </div>
+
+    <div class="detail-grid">
+      <div class="detail-item span2">
+        <small>Judul pekerjaan</small>
+        <strong id="detailTitle">-</strong>
+      </div>
+
+      <div class="detail-item">
+        <small>Equipment</small>
+        <strong id="detailEquipment">-</strong>
+      </div>
+
+      <div class="detail-item">
+        <small>PIC</small>
+        <strong id="detailPic">-</strong>
+      </div>
+
+      <div class="detail-item">
+        <small>Jenis pekerjaan</small>
+        <strong id="detailType">-</strong>
+      </div>
+
+      <div class="detail-item">
+        <small>Prioritas</small>
+        <strong id="detailPriority">-</strong>
+      </div>
+
+      <div class="detail-item">
+        <small>Tanggal rencana</small>
+        <strong id="detailDueDate">-</strong>
+      </div>
+
+      <div class="detail-item">
+        <small>Status</small>
+        <strong id="detailStatus">-</strong>
+      </div>
+
+      <div class="detail-item span2">
+        <small>Deskripsi</small>
+        <p id="detailDescription">-</p>
+      </div>
+
+      <div class="detail-item">
+        <small>Foto sebelum</small>
+        <div id="detailBeforePhoto" class="detail-photo-box">
+          Belum tersedia
+        </div>
+      </div>
+
+      <div class="detail-item">
+        <small>Foto sesudah</small>
+        <div id="detailAfterPhoto" class="detail-photo-box">
+          Belum tersedia
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button
+        id="detailCloseButton"
+        class="btn ghost"
+        type="button"
+      >
+        Tutup
+      </button>
+    </div>
+  </div>
+</div>
+<div id="technicianPhotoModal" class="modal hidden">
+  <div class="modal-card technician-photo-card">
+    <div class="modal-head">
+      <div>
+        <h2>Tambahkan Foto Pekerjaan</h2>
+        <p class="muted">
+          Lampirkan foto setelah pekerjaan selesai dilakukan.
+        </p>
+      </div>
+
+      <button
+        id="technicianPhotoClose"
+        class="icon-btn"
+        type="button"
+      >
+        ×
+      </button>
+    </div>
+
+    <div class="upload-work-information">
+      <small>Pekerjaan</small>
+      <strong id="technicianWorkTitle">-</strong>
+
+      <small>Equipment</small>
+      <strong id="technicianEquipment">-</strong>
+    </div>
+
+    <form id="technicianPhotoForm">
+      <input
+        id="technicianWorkId"
+        type="hidden"
+      >
+
+      <label>
+        Foto sesudah pekerjaan
+
+        <input
+          id="technicianAfterPhoto"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          capture="environment"
+          required
+        >
+      </label>
+
+      <div id="technicianPhotoPreview" class="photo-preview hidden">
+        <img
+          id="technicianPreviewImage"
+          alt="Pratinjau foto pekerjaan"
+        >
+      </div>
+
+      <p class="upload-information">
+        Setelah foto berhasil disimpan, status pekerjaan otomatis
+        menjadi Selesai dan menunggu verifikasi user.
+      </p>
+
+      <div class="modal-actions">
+        <button
+          id="technicianPhotoCancel"
+          class="btn ghost"
+          type="button"
+        >
+          Batal
+        </button>
+
+        <button
+          id="technicianPhotoSave"
+          class="btn primary"
+          type="submit"
+        >
+          Upload Foto & Selesaikan
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+<div class="modal-card signature-card"><div class="modal-head"><h2>Paraf Verifikasi</h2><button class="icon-btn" data-close-sign>×</button></div><p>Gambar paraf pada area di bawah. Verifikasi hanya dapat dilakukan setelah paraf disimpan.</p><canvas id="signatureCanvas" width="700" height="260"></canvas><div class="modal-actions"><button id="clearSignature" class="btn ghost">Hapus</button><button id="saveSignature" class="btn primary">Simpan & Verifikasi</button></div></div></div><div id="toast" class="toast"></div>
 <script src="config.js"></script><script src="js/app.js"></script></body></html>
