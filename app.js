@@ -158,6 +158,10 @@ function bindEvents() {
   $("#cancelBtn")?.addEventListener("click", () => closeModal("#modal"));
   $("#workForm")?.addEventListener("submit", saveWork);
 
+  /* Event delegation untuk tombol tabel pekerjaan.
+   * Tetap bekerja setiap kali isi tbody dirender ulang. */
+  $("#workTable")?.addEventListener("click", handleWorkTableClick);
+
   $("#searchInput")?.addEventListener("input", renderWorks);
 
   ["statusFilter", "priorityFilter", "typeFilter", "picFilter"].forEach(id => {
@@ -469,7 +473,6 @@ function renderWorks() {
     </tr>
   `;
 
-  bindWorkTableEvents();
 }
 
 function renderTablePhoto(path, label) {
@@ -563,31 +566,46 @@ function actionButtons(work) {
   return `<div class="action-group">${buttons.join("")}</div>`;
 }
 
-function bindWorkTableEvents() {
-  $$('[data-detail]').forEach(button => {
-    button.onclick = () => openWorkDetail(button.dataset.detail);
-  });
+function handleWorkTableClick(event) {
+  const button = event.target.closest("button");
 
-  $$('[data-edit]').forEach(button => {
-    button.onclick = () => openWork(button.dataset.edit);
-  });
+  if (!button || !event.currentTarget.contains(button) || button.disabled) {
+    return;
+  }
 
-  $$('[data-del]').forEach(button => {
-    button.onclick = () => deleteWork(button.dataset.del);
-  });
+  event.preventDefault();
+  event.stopPropagation();
 
-  $$('[data-start-work]').forEach(button => {
-    button.onclick = () => startTechnicianWork(button.dataset.startWork);
-  });
+  if (button.dataset.detail) {
+    openWorkDetail(button.dataset.detail);
+    return;
+  }
 
-  $$('[data-upload-photo]').forEach(button => {
-    button.onclick = () => openTechnicianPhotoModal(button.dataset.uploadPhoto);
-  });
+  if (button.dataset.edit) {
+    openWork(button.dataset.edit);
+    return;
+  }
 
-  $$('[data-verify]').forEach(button => {
-    button.onclick = () => openSignature(button.dataset.verify);
-  });
+  if (button.dataset.del) {
+    deleteWork(button.dataset.del);
+    return;
+  }
+
+  if (button.dataset.startWork) {
+    startTechnicianWork(button.dataset.startWork);
+    return;
+  }
+
+  if (button.dataset.uploadPhoto) {
+    openTechnicianPhotoModal(button.dataset.uploadPhoto);
+    return;
+  }
+
+  if (button.dataset.verify) {
+    openSignature(button.dataset.verify);
+  }
 }
+
 
 /* =========================================================
  * DETAIL PEKERJAAN READ ONLY
