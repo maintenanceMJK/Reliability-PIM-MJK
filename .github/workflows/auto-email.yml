@@ -1,7 +1,7 @@
 name: Auto Email Maintenance Report
 on:
   schedule:
-    - cron: '0 0 * * *' # Senin 07:00 WIB
+    - cron: '0 0 * * *' # Tiap hari 07:00 WIB
   workflow_dispatch:
 jobs:
   email:
