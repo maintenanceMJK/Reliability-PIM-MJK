@@ -22,9 +22,178 @@ function verifyButton(x){return ['user','admin'].includes(profile.role)?`<button
 function actionButtons(x){let a=[];if(profile.role==='admin')a.push(`<button class="mini-btn" data-edit="${x.id}">✎</button><button class="mini-btn" data-del="${x.id}">🗑</button>`);if(profile.role==='technician'&&x.status!=='Selesai')a.push(`<button class="mini-btn" data-finish="${x.id}">✓ Selesai</button>`);return a.join('')||'-'}
 function openWork(id){let x=works.find(w=>w.id===id);$('#modalTitle').textContent=x?'Edit Pekerjaan':'Tambah Pekerjaan';$('#workId').value=x?.id||'';$('#title').value=x?.title||'';$('#equipmentId').value=x?.equipment_id||'';$('#pic').value=x?.pic||'';$('#type').value=x?.work_type||'Preventive Maintenance';$('#priority').value=x?.priority||'Medium';$('#dueDate').value=x?.due_date||'';$('#status').value=x?.status||'Open';$('#description').value=x?.description||'';$('#modal').classList.remove('hidden')}
 async function upload(file,workId,kind){if(!file)return null;let ext=file.name.split('.').pop().toLowerCase(),path=`${workId}/${kind}-${Date.now()}.${ext}`;let {error}=await sb.storage.from(C.PHOTO_BUCKET).upload(path,file,{upsert:true});if(error)throw error;return path}
-async function saveWork(e){e.preventDefault();try{let id=$('#workId').value||crypto.randomUUID(),old=works.find(x=>x.id===id),payload={id,title:$('#title').value,equipment_id:$('#equipmentId').value,pic:$('#pic').value,work_type:$('#type').value,priority:$('#priority').value,due_date:$('#dueDate').value||null,status:$('#status').value,description:$('#description').value,created_by:old?.created_by||session.user.id};let bp=await upload($('#beforePhoto').files[0],id,'before'),ap=await upload($('#afterPhoto').files[0],id,'after');if(bp)payload.before_photo_path=bp;if(ap)payload.after_photo_path=ap;let {error}=await sb.from('works').upsert(payload);if(error)throw error;toast('Pekerjaan tersimpan');$('#modal').classList.add('hidden');await loadWorks()}catch(e){toast(e.message,true)}}
+async function saveWork(e) {
+  e.preventDefault();
+
+  try {
+    const existingId = $("#workId").value;
+    const oldWork = works.find(work => work.id === existingId);
+
+    /*
+     * MODE TEKNISI
+     * Teknisi hanya diperbolehkan mengunggah foto sesudah.
+     * Teknisi tidak menggunakan upsert karena tidak memiliki izin INSERT.
+     */
+    if (profile.role === "technician") {
+      if (!existingId || !oldWork) {
+        throw new Error("Data pekerjaan tidak ditemukan.");
+      }
+
+      const afterFile = $("#afterPhoto").files[0];
+
+      if (!afterFile) {
+        throw new Error("Pilih foto sesudah pekerjaan terlebih dahulu.");
+      }
+
+      const afterPhotoPath = await upload(
+        afterFile,
+        existingId,
+        "after"
+      );
+
+      const { error } = await sb
+        .from("works")
+        .update({
+          after_photo_path: afterPhotoPath,
+          status: "Proses",
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", existingId);
+
+      if (error) {
+        throw error;
+      }
+
+      toast("Foto pekerjaan selesai berhasil disimpan.");
+
+      $("#workForm").reset();
+      $("#modal").classList.add("hidden");
+
+      await loadWorks();
+      return;
+    }
+
+    /*
+     * MODE USER
+     * User biasa tidak boleh menyimpan form pekerjaan.
+     */
+    if (profile.role === "user") {
+      throw new Error(
+        "Pengguna tidak memiliki izin mengubah data pekerjaan."
+      );
+    }
+
+    /*
+     * MODE ADMIN
+     * Admin boleh menambah dan mengedit seluruh data pekerjaan.
+     */
+    if (profile.role !== "admin") {
+      throw new Error("Role pengguna tidak dikenali.");
+    }
+
+    const workId = existingId || crypto.randomUUID();
+
+    const payload = {
+      id: workId,
+      title: $("#title").value.trim(),
+      equipment_id: $("#equipmentId").value,
+      pic: $("#pic").value.trim(),
+      work_type: $("#type").value,
+      priority: $("#priority").value,
+      due_date: $("#dueDate").value || null,
+      status: $("#status").value,
+      description: $("#description").value.trim(),
+      created_by: oldWork?.created_by || session.user.id,
+      updated_at: new Date().toISOString()
+    };
+
+    const beforeFile = $("#beforePhoto").files[0];
+    const afterFile = $("#afterPhoto").files[0];
+
+    if (beforeFile) {
+      payload.before_photo_path = await upload(
+        beforeFile,
+        workId,
+        "before"
+      );
+    }
+
+    if (afterFile) {
+      payload.after_photo_path = await upload(
+        afterFile,
+        workId,
+        "after"
+      );
+    }
+
+    const { error } = await sb
+      .from("works")
+      .upsert(payload);
+
+    if (error) {
+      throw error;
+    }
+
+    toast("Pekerjaan berhasil disimpan.");
+
+    $("#workForm").reset();
+    $("#modal").classList.add("hidden");
+
+    await loadWorks();
+  } catch (error) {
+    console.error("Gagal menyimpan pekerjaan:", error);
+    toast("Gagal menyimpan: " + error.message, true);
+  }
+}
 async function delWork(id){if(!confirm('Hapus pekerjaan ini?'))return;let {error}=await sb.from('works').delete().eq('id',id);if(error)return toast(error.message,true);toast('Pekerjaan dihapus');loadWorks()}
-async function finishWork(id){let x=works.find(w=>w.id===id);if(!x.after_photo_path){openWork(id);toast('Tambahkan foto sesudah terlebih dahulu',true);return}let {error}=await sb.from('works').update({status:'Selesai',completed_at:new Date().toISOString()}).eq('id',id);if(error)return toast(error.message,true);toast('Pekerjaan selesai, menunggu verifikasi');loadWorks()}
+async function finishWork(id) {
+  try {
+    if (profile.role !== "technician" && profile.role !== "admin") {
+      throw new Error(
+        "Pengguna tidak memiliki izin menyelesaikan pekerjaan."
+      );
+    }
+
+    const work = works.find(item => item.id === id);
+
+    if (!work) {
+      throw new Error("Data pekerjaan tidak ditemukan.");
+    }
+
+    if (!work.after_photo_path) {
+      openWork(id);
+
+      toast(
+        "Tambahkan foto sesudah pekerjaan terlebih dahulu.",
+        true
+      );
+
+      return;
+    }
+
+    const { error } = await sb
+      .from("works")
+      .update({
+        status: "Selesai",
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", id);
+
+    if (error) {
+      throw error;
+    }
+
+    toast(
+      "Pekerjaan selesai dan menunggu verifikasi pengguna."
+    );
+
+    await loadWorks();
+  } catch (error) {
+    console.error("Gagal menyelesaikan pekerjaan:", error);
+    toast("Gagal: " + error.message, true);
+  }
+}
 function openSignature(id){let x=works.find(w=>w.id===id);if(!x.after_photo_path)return toast('Foto sesudah wajib tersedia',true);signWorkId=id;$('#signatureModal').classList.remove('hidden');clearSig()}
 let ctx,drawing=false;function setupCanvas(){let c=$('#signatureCanvas');ctx=c.getContext('2d');ctx.lineWidth=3;ctx.lineCap='round';let pos=e=>{let r=c.getBoundingClientRect(),p=e.touches?.[0]||e;return{x:(p.clientX-r.left)*c.width/r.width,y:(p.clientY-r.top)*c.height/r.height}};c.onpointerdown=e=>{drawing=true;let p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y)};c.onpointermove=e=>{if(!drawing)return;let p=pos(e);ctx.lineTo(p.x,p.y);ctx.stroke()};c.onpointerup=c.onpointerleave=()=>drawing=false}
 function clearSig(){ctx?.clearRect(0,0,$('#signatureCanvas').width,$('#signatureCanvas').height)}
