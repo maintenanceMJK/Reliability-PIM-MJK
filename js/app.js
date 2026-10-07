@@ -1,684 +1,717 @@
-const C=window.APP_CONFIG;const sb=supabase.createClient(C.SUPABASE_URL,C.SUPABASE_ANON_KEY);const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];let session=null,profile=null,works=[],equipment=[],signWorkId=null;const toast=(m,e=false)=>{let t=$('#toast');t.textContent=m;t.className='toast show'+(e?' error':'');setTimeout(()=>t.className='toast',3200)};const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
-async function init(){ $('#today').textContent=new Intl.DateTimeFormat('id-ID',{dateStyle:'full'}).format(new Date()); const {data}=await sb.auth.getSession(); if(data.session) await enter(data.session); else showLogin(); sb.auth.onAuthStateChange(async(_,s)=>s?enter(s):showLogin()); bind(); }
-function bind(){ $('#loginForm').onsubmit=login;$('#logoutBtn').onclick=()=>sb.auth.signOut();$$('#nav button').forEach(b=>b.onclick=()=>page(b.dataset.page,b));
-$("#detailModalClose").onclick = () => {
-  $("#detailModal").classList.add("hidden");
-};
+"use strict";
 
-$("#detailCloseButton").onclick = () => {
-  $("#detailModal").classList.add("hidden");
-};
+/* =========================================================
+ * MAINTENANCE WORK MANAGEMENT
+ * Reliability PT. Padi Indonesia Maju - Mojokerto
+ *
+ * Dependensi global dari index.html:
+ * - window.supabase
+ * - window.XLSX
+ * - window.ExcelJS
+ * - window.saveAs
+ * - window.APP_CONFIG
+ * ========================================================= */
 
-$("#technicianPhotoClose").onclick = () => {
-  $("#technicianPhotoModal").classList.add("hidden");
-};
+const C = window.APP_CONFIG;
 
-$("#technicianPhotoCancel").onclick = () => {
-  $("#technicianPhotoModal").classList.add("hidden");
-};
+if (!C?.SUPABASE_URL || !C?.SUPABASE_ANON_KEY) {
+  throw new Error("Konfigurasi Supabase pada config.js belum lengkap.");
+}
 
-$("#technicianPhotoForm").onsubmit =
-  saveTechnicianPhoto;
+const sb = supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
+const $ = selector => document.querySelector(selector);
+const $$ = selector => [...document.querySelectorAll(selector)];
 
-$("#technicianAfterPhoto").onchange = event => {
-  const file = event.target.files[0];
+let session = null;
+let profile = null;
+let works = [];
+let equipment = [];
+let signWorkId = null;
+let signatureContext = null;
+let signatureDrawing = false;
+let technicianPreviewUrl = null;
 
-  if (!file) {
-    $("#technicianPhotoPreview").classList.add(
-      "hidden"
-    );
+/* =========================================================
+ * UTILITAS
+ * ========================================================= */
 
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>'"]/g, character => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "'": "&#39;",
+    '"': "&quot;"
+  })[character]);
+}
+
+function showToast(message, isError = false) {
+  const element = $("#toast");
+
+  if (!element) {
+    if (isError) console.error(message);
+    else console.log(message);
     return;
   }
 
-  const previewUrl = URL.createObjectURL(file);
+  element.textContent = message;
+  element.className = `toast show${isError ? " error" : ""}`;
 
-  $("#technicianPreviewImage").src = previewUrl;
-  $("#technicianPhotoPreview").classList.remove(
-    "hidden"
-  );
-};
-$$('[data-goto]').forEach(b=>b.onclick=()=>page(b.dataset.goto,$(`[data-page="${b.dataset.goto}"]`)));$('#addBtn').onclick=()=>openWork();$('#modalClose').onclick=$('#cancelBtn').onclick=()=>$('#modal').classList.add('hidden');$('#workForm').onsubmit=saveWork;$('#searchInput').oninput=renderWorks;['statusFilter','priorityFilter','typeFilter','picFilter'].forEach(id=>$(`#${id}`).oninput=renderWorks);$('#resetFilter').onclick=()=>{['searchInput','statusFilter','priorityFilter','typeFilter','picFilter'].forEach(id=>$(`#${id}`).value='');renderWorks()};$('#exportBtn').onclick = async () => {
-try {
-await exportXlsx(false);
-} catch (error) {
-console.error("Export XLSX gagal:", error);
-toast("Export gagal: " + error.message, true);
+  window.clearTimeout(showToast.timer);
+  showToast.timer = window.setTimeout(() => {
+    element.className = "toast";
+  }, 4000);
 }
-};$('#emailBtn').onclick=sendEmail;$('#importBtn').onclick=()=>$('#importFile').click();$('#importFile').onchange=importWorks;$('#masterImportBtn').onclick=()=>$('#masterFile').click();$('#masterFile').onchange=importMaster;$('#masterAddBtn').onclick=()=>editMaster();$('#userAddBtn').onclick=inviteUser;$('#clearSignature').onclick=clearSig;$('#saveSignature').onclick=saveVerification;$$('[data-close-sign]').forEach(x=>x.onclick=()=>$('#signatureModal').classList.add('hidden'));setupCanvas()}
-async function login(e){e.preventDefault();$('#loginMsg').textContent='Memeriksa...';let {error}=await sb.auth.signInWithPassword({email:$('#loginEmail').value,password:$('#loginPassword').value});$('#loginMsg').textContent=error?error.message:''}
-function showLogin(){$('#loginView').classList.remove('hidden');$('#appView').classList.add('hidden')}
-async function enter(s){session=s;let {data,error}=await sb.from('profiles').select('*').eq('id',s.user.id).single();if(error){toast('Profil pengguna belum tersedia',true);return}profile=data;$('#loginView').classList.add('hidden');$('#appView').classList.remove('hidden');$('#userName').textContent=profile.full_name||s.user.email;$('#userRole').textContent=profile.role;$$('[data-role="admin"]').forEach(el=>el.classList.toggle('hidden',profile.role!=='admin'));await Promise.all([loadEquipment(),loadWorks(),profile.role==='admin'?loadUsers():Promise.resolve()]);}
-function page(n,b){$$('.page').forEach(x=>x.classList.add('hidden'));$(`#${n}Page`).classList.remove('hidden');$$('#nav button').forEach(x=>x.classList.remove('active'));b?.classList.add('active');$('#pageTitle').textContent={dashboard:'Dashboard',works:'Pekerjaan',manage:'Kelola Master',users:'Kelola Pengguna'}[n]}
-async function loadWorks(){let {data,error}=await sb.from('works').select('*,equipment(*)').order('created_at',{ascending:false});if(error)return toast(error.message,true);works=data||[];renderAll()}
-async function loadEquipment(){let {data,error}=await sb.from('equipment').select('*').order('name');if(error)return toast(error.message,true);equipment=data||[];$('#equipmentId').innerHTML='<option value="">Pilih equipment</option>'+equipment.map(x=>`<option value="${x.id}">${esc(x.name)} | ${esc(x.code_number)}</option>`).join('');renderMaster()}
-function renderAll(){let done=works.filter(x=>x.status==='Selesai'&&x.verified_at).length;$('#kpiTotal').textContent=works.length;$('#kpiOpen').textContent=works.filter(x=>x.status==='Open').length;$('#kpiProcess').textContent=works.filter(x=>x.status==='Proses'||(x.status==='Selesai'&&!x.verified_at)).length;$('#kpiDone').textContent=done;$('#recentList').innerHTML=works.slice(0,6).map(x=>`<div class="recent-item"><div><strong>${esc(x.title)}</strong><br><small>${esc(x.equipment?.name||'-')} • ${esc(x.pic)}</small></div><span class="badge ${x.status}">${x.verified_at?'Selesai':esc(x.status)}</span></div>`).join('')||'<p class="muted">Belum ada data.</p>';renderWorks()}
-function filtered(){let q=$('#searchInput').value.toLowerCase(),s=$('#statusFilter').value,p=$('#priorityFilter').value,t=$('#typeFilter').value,pic=$('#picFilter').value.toLowerCase();return works.filter(x=>[x.title,x.pic,x.equipment?.name].join(' ').toLowerCase().includes(q)&&(!s||x.status===s)&&(!p||x.priority===p)&&(!t||x.work_type===t)&&(!pic||x.pic.toLowerCase().includes(pic)))}
-function renderWorks(){let rows=filtered();$('#workTable').innerHTML=rows.map((x,i)=>`<tr><td>${i+1}</td><td><strong>${esc(x.title)}
-</strong><br><small>${esc(x.description||'')}</small></td><td>${esc(x.equipment?.name||'-')}
-</td><td>${esc(x.work_type)}</td><td>${esc(x.priority)}</td><td>${esc(x.pic)}</td><td>
-<span class="badge ${x.status}">${x.verified_at?'Selesai':esc(x.status)}</span></td><td>${photo(x.before_photo_path)} 
-${photo(x.after_photo_path)}</td><td>${x.verified_at?'✓ '+esc(x.verified_by_name||'Terverifikasi'):verifyButton(x)}</td>
-<td>${actionButtons(x)}</td></tr>`).join('')||'<tr><td colspan="10" class="muted">Data tidak ditemukan.</td></tr>';
-$$("[data-detail]").forEach(button => {
-  button.onclick = () => {
-    openWorkDetail(button.dataset.detail);
-  };
-});
 
-$$("[data-edit]").forEach(button => {
-  button.onclick = () => {
-    openWork(button.dataset.edit);
-  };
-});
+function formatDate(dateValue) {
+  if (!dateValue) return "-";
 
-$$("[data-del]").forEach(button => {
-  button.onclick = () => {
-    delWork(button.dataset.del);
-  };
-});
+  const date = new Date(`${String(dateValue).slice(0, 10)}T00:00:00`);
 
-$$("[data-start-work]").forEach(button => {
-  button.onclick = () => {
-    startTechnicianWork(
-      button.dataset.startWork
-    );
-  };
-});
+  if (Number.isNaN(date.getTime())) return String(dateValue);
 
-$$("[data-upload-photo]").forEach(button => {
-  button.onclick = () => {
-    openTechnicianPhotoModal(
-      button.dataset.uploadPhoto
-    );
-  };
-});
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  }).format(date);
+}
 
-$$("[data-verify]").forEach(button => {
-  button.onclick = () => {
-    openSignature(button.dataset.verify);
+function getPublicPhotoUrl(path) {
+  if (!path) return null;
+
+  const { data } = sb.storage
+    .from(C.PHOTO_BUCKET)
+    .getPublicUrl(path);
+
+  return data?.publicUrl || null;
+}
+
+function closeModal(selector) {
+  const modal = $(selector);
+  if (modal) modal.classList.add("hidden");
+}
+
+function setButtonLoading(button, loading, loadingText, normalText) {
+  if (!button) return;
+  button.disabled = loading;
+  button.textContent = loading ? loadingText : normalText;
+}
+
+function requireRole(allowedRoles, message = "Anda tidak memiliki izin.") {
+  if (!profile || !allowedRoles.includes(profile.role)) {
+    throw new Error(message);
+  }
+}
+
+/* =========================================================
+ * INISIALISASI DAN EVENT
+ * ========================================================= */
+
+async function init() {
+  const today = $("#today");
+  if (today) {
+    today.textContent = new Intl.DateTimeFormat("id-ID", {
+      dateStyle: "full"
+    }).format(new Date());
+  }
+
+  bindEvents();
+  setupSignatureCanvas();
+
+  const { data, error } = await sb.auth.getSession();
+
+  if (error) {
+    showToast(`Gagal membaca sesi: ${error.message}`, true);
+    showLogin();
+    return;
+  }
+
+  if (data.session) await enterApplication(data.session);
+  else showLogin();
+
+  sb.auth.onAuthStateChange(async (_event, newSession) => {
+    if (newSession) await enterApplication(newSession);
+    else showLogin();
+  });
+}
+
+function bindEvents() {
+  $("#loginForm")?.addEventListener("submit", login);
+  $("#logoutBtn")?.addEventListener("click", () => sb.auth.signOut());
+
+  $$("#nav button").forEach(button => {
+    button.addEventListener("click", () => {
+      changePage(button.dataset.page, button);
+    });
+  });
+
+  $$('[data-goto]').forEach(button => {
+    button.addEventListener("click", () => {
+      const pageName = button.dataset.goto;
+      changePage(pageName, $(`[data-page="${pageName}"]`));
+    });
+  });
+
+  $("#addBtn")?.addEventListener("click", () => openWork());
+  $("#modalClose")?.addEventListener("click", () => closeModal("#modal"));
+  $("#cancelBtn")?.addEventListener("click", () => closeModal("#modal"));
+  $("#workForm")?.addEventListener("submit", saveWork);
+
+  $("#searchInput")?.addEventListener("input", renderWorks);
+
+  ["statusFilter", "priorityFilter", "typeFilter", "picFilter"].forEach(id => {
+    $(`#${id}`)?.addEventListener("input", renderWorks);
+  });
+
+  $("#resetFilter")?.addEventListener("click", resetFilters);
+  $("#exportBtn")?.addEventListener("click", () => exportXlsx(false));
+  $("#emailBtn")?.addEventListener("click", sendEmail);
+
+  $("#importBtn")?.addEventListener("click", () => $("#importFile")?.click());
+  $("#importFile")?.addEventListener("change", importWorks);
+  $("#masterImportBtn")?.addEventListener("click", () => $("#masterFile")?.click());
+  $("#masterFile")?.addEventListener("change", importMaster);
+  $("#masterAddBtn")?.addEventListener("click", () => editMaster());
+  $("#userAddBtn")?.addEventListener("click", inviteUser);
+
+  $("#detailModalClose")?.addEventListener("click", () => closeModal("#detailModal"));
+  $("#detailCloseButton")?.addEventListener("click", () => closeModal("#detailModal"));
+
+  $("#technicianPhotoClose")?.addEventListener("click", closeTechnicianPhotoModal);
+  $("#technicianPhotoCancel")?.addEventListener("click", closeTechnicianPhotoModal);
+  $("#technicianPhotoForm")?.addEventListener("submit", saveTechnicianPhoto);
+  $("#technicianAfterPhoto")?.addEventListener("change", previewTechnicianPhoto);
+
+  $("#clearSignature")?.addEventListener("click", clearSignature);
+  $("#saveSignature")?.addEventListener("click", saveVerification);
+
+  $$('[data-close-sign]').forEach(button => {
+    button.addEventListener("click", () => closeModal("#signatureModal"));
+  });
+
+  $$(".modal").forEach(modal => {
+    modal.addEventListener("click", event => {
+      if (event.target === modal) modal.classList.add("hidden");
+    });
+  });
+}
+
+/* =========================================================
+ * AUTHENTICATION DAN ROLE
+ * ========================================================= */
+
+async function login(event) {
+  event.preventDefault();
+
+  const message = $("#loginMsg");
+  if (message) message.textContent = "Memeriksa akun...";
+
+  const email = $("#loginEmail")?.value.trim();
+  const password = $("#loginPassword")?.value;
+
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+
+  if (message) message.textContent = error ? error.message : "";
+}
+
+function showLogin() {
+  session = null;
+  profile = null;
+  works = [];
+  equipment = [];
+
+  $("#loginView")?.classList.remove("hidden");
+  $("#appView")?.classList.add("hidden");
+}
+
+async function enterApplication(newSession) {
+  session = newSession;
+
+  const { data, error } = await sb
+    .from("profiles")
+    .select("*")
+    .eq("id", newSession.user.id)
+    .single();
+
+  if (error || !data) {
+    showToast("Profil pengguna belum tersedia.", true);
+    return;
+  }
+
+  if (!data.is_active) {
+    showToast("Akun ini sedang dinonaktifkan.", true);
+    await sb.auth.signOut();
+    return;
+  }
+
+  profile = data;
+
+  $("#loginView")?.classList.add("hidden");
+  $("#appView")?.classList.remove("hidden");
+
+  if ($("#userName")) {
+    $("#userName").textContent = profile.full_name || newSession.user.email;
+  }
+
+  if ($("#userRole")) {
+    $("#userRole").textContent = profile.role;
+  }
+
+  applyRoleVisibility();
+
+  await Promise.all([
+    loadEquipment(),
+    loadWorks(),
+    profile.role === "admin" ? loadUsers() : Promise.resolve()
+  ]);
+}
+
+function applyRoleVisibility() {
+  $$('[data-role="admin"]').forEach(element => {
+    element.classList.toggle("hidden", profile.role !== "admin");
+  });
+
+  const exportButton = $("#exportBtn");
+  if (exportButton) {
+    exportButton.classList.toggle("hidden", profile.role === "technician");
+  }
+}
+
+/* =========================================================
+ * NAVIGASI
+ * ========================================================= */
+
+function changePage(pageName, navigationButton) {
+  const target = $(`#${pageName}Page`);
+  if (!target) return;
+
+  if (["manage", "users"].includes(pageName) && profile.role !== "admin") {
+    showToast("Halaman ini hanya dapat dibuka admin.", true);
+    return;
+  }
+
+  $$(".page").forEach(page => page.classList.add("hidden"));
+  target.classList.remove("hidden");
+
+  $$("#nav button").forEach(button => button.classList.remove("active"));
+  navigationButton?.classList.add("active");
+
+  const titles = {
+    dashboard: "Dashboard",
+    works: "Pekerjaan",
+    manage: "Kelola Master",
+    users: "Kelola Pengguna"
   };
-});
-function photo(path){if(!path)return '';let {data}=sb.storage.from(C.PHOTO_BUCKET).getPublicUrl(path);return `<a href="${data.publicUrl}" target="_blank"><img class="photo" src="${data.publicUrl}" alt="Foto"></a>`}
-function verifyButton(work) {
-  if (work.verified_at) {
-    return `
-      <span class="badge Selesai">
-        ✓ Terverifikasi
-      </span>
+
+  if ($("#pageTitle")) {
+    $("#pageTitle").textContent = titles[pageName] || "Maintenance";
+  }
+}
+
+/* =========================================================
+ * LOAD DATA
+ * ========================================================= */
+
+async function loadWorks() {
+  const { data, error } = await sb
+    .from("works")
+    .select("*, equipment(*)")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    showToast(`Gagal mengambil pekerjaan: ${error.message}`, true);
+    return;
+  }
+
+  works = data || [];
+  renderAll();
+}
+
+async function loadEquipment() {
+  const { data, error } = await sb
+    .from("equipment")
+    .select("*")
+    .order("name");
+
+  if (error) {
+    showToast(`Gagal mengambil equipment: ${error.message}`, true);
+    return;
+  }
+
+  equipment = data || [];
+
+  const select = $("#equipmentId");
+  if (select) {
+    select.innerHTML = `
+      <option value="">Pilih equipment</option>
+      ${equipment.map(item => `
+        <option value="${item.id}">
+          ${escapeHtml(item.name)} | ${escapeHtml(item.code_number)}
+        </option>
+      `).join("")}
     `;
   }
 
-  /*
-   * Teknisi tidak dapat melakukan verifikasi.
-   */
+  renderMaster();
+}
+
+/* =========================================================
+ * DASHBOARD DAN FILTER
+ * ========================================================= */
+
+function renderAll() {
+  const verifiedWorks = works.filter(work => Boolean(work.verified_at));
+
+  if ($("#kpiTotal")) $("#kpiTotal").textContent = works.length;
+  if ($("#kpiOpen")) {
+    $("#kpiOpen").textContent = works.filter(work => work.status === "Open").length;
+  }
+  if ($("#kpiProcess")) {
+    $("#kpiProcess").textContent = works.filter(work =>
+      work.status === "Proses" || (work.status === "Selesai" && !work.verified_at)
+    ).length;
+  }
+  if ($("#kpiDone")) $("#kpiDone").textContent = verifiedWorks.length;
+
+  const recentList = $("#recentList");
+
+  if (recentList) {
+    recentList.innerHTML = works.slice(0, 6).map(work => `
+      <div class="recent-item">
+        <div>
+          <strong>${escapeHtml(work.title)}</strong><br>
+          <small>
+            ${escapeHtml(work.equipment?.name || "-")} •
+            ${escapeHtml(work.pic || "-")}
+          </small>
+        </div>
+        <span class="badge ${escapeHtml(work.status)}">
+          ${work.verified_at ? "Terverifikasi" : escapeHtml(work.status)}
+        </span>
+      </div>
+    `).join("") || '<p class="muted">Belum ada data.</p>';
+  }
+
+  renderWorks();
+}
+
+function getFilteredWorks() {
+  const query = $("#searchInput")?.value.toLowerCase().trim() || "";
+  const status = $("#statusFilter")?.value || "";
+  const priority = $("#priorityFilter")?.value || "";
+  const type = $("#typeFilter")?.value || "";
+  const pic = $("#picFilter")?.value.toLowerCase().trim() || "";
+
+  return works.filter(work => {
+    const searchableText = [
+      work.title,
+      work.description,
+      work.pic,
+      work.equipment?.name,
+      work.equipment?.code_number
+    ].join(" ").toLowerCase();
+
+    return searchableText.includes(query) &&
+      (!status || work.status === status) &&
+      (!priority || work.priority === priority) &&
+      (!type || work.work_type === type) &&
+      (!pic || String(work.pic || "").toLowerCase().includes(pic));
+  });
+}
+
+function resetFilters() {
+  ["searchInput", "statusFilter", "priorityFilter", "typeFilter", "picFilter"]
+    .forEach(id => {
+      const element = $(`#${id}`);
+      if (element) element.value = "";
+    });
+
+  renderWorks();
+}
+
+/* =========================================================
+ * TABEL PEKERJAAN DAN TOMBOL ROLE
+ * ========================================================= */
+
+function renderWorks() {
+  const tableBody = $("#workTable");
+  if (!tableBody) return;
+
+  const rows = getFilteredWorks();
+
+  tableBody.innerHTML = rows.map((work, index) => `
+    <tr>
+      <td>${index + 1}</td>
+      <td>
+        <strong>${escapeHtml(work.title)}</strong><br>
+        <small>${escapeHtml(work.description || "")}</small>
+      </td>
+      <td>${escapeHtml(work.equipment?.name || "-")}</td>
+      <td>${escapeHtml(work.work_type || "-")}</td>
+      <td>${escapeHtml(work.priority || "-")}</td>
+      <td>${escapeHtml(work.pic || "-")}</td>
+      <td>
+        <span class="badge ${escapeHtml(work.status)}">
+          ${work.verified_at ? "Terverifikasi" : escapeHtml(work.status)}
+        </span>
+      </td>
+      <td>
+        ${renderTablePhoto(work.before_photo_path, "Foto sebelum")}
+        ${renderTablePhoto(work.after_photo_path, "Foto sesudah")}
+      </td>
+      <td>${renderVerificationCell(work)}</td>
+      <td>${actionButtons(work)}</td>
+    </tr>
+  `).join("") || `
+    <tr>
+      <td colspan="10" class="muted">Data tidak ditemukan.</td>
+    </tr>
+  `;
+
+  bindWorkTableEvents();
+}
+
+function renderTablePhoto(path, label) {
+  const publicUrl = getPublicPhotoUrl(path);
+  if (!publicUrl) return "";
+
+  return `
+    <a href="${publicUrl}" target="_blank" rel="noopener noreferrer">
+      <img class="photo" src="${publicUrl}" alt="${escapeHtml(label)}">
+    </a>
+  `;
+}
+
+function renderVerificationCell(work) {
+  if (work.verified_at) {
+    return `✓ ${escapeHtml(work.verified_by_name || "Terverifikasi")}`;
+  }
+
   if (profile.role === "technician") {
-    if (work.status === "Open") {
-      return "Belum dimulai";
-    }
-
-    if (work.status === "Proses") {
-      return "Sedang dikerjakan";
-    }
-
+    if (work.status === "Open") return "Belum dimulai";
+    if (work.status === "Proses") return "Sedang dikerjakan";
     return "Menunggu user";
   }
 
-  /*
-   * User/admin hanya dapat verifikasi setelah:
-   * 1. Status Selesai
-   * 2. Foto sesudah tersedia
-   */
-  const mayVerify =
-    ["user", "admin"].includes(profile.role) &&
+  const mayVerify = ["user", "admin"].includes(profile.role) &&
     work.status === "Selesai" &&
     Boolean(work.after_photo_path);
 
-  if (!mayVerify) {
-    if (work.status === "Open") {
-      return "Belum dimulai";
-    }
-
-    if (work.status === "Proses") {
-      return "Menunggu teknisi";
-    }
-
-    if (!work.after_photo_path) {
-      return "Foto belum tersedia";
-    }
-
-    return "Belum dapat diverifikasi";
+  if (mayVerify) {
+    return `
+      <button class="mini-btn btn-upload" data-verify="${work.id}" type="button">
+        ✍ Paraf & Verifikasi
+      </button>
+    `;
   }
 
-  return `
-    <button
-      class="mini-btn btn-upload"
-      data-verify="${work.id}"
-      type="button"
-    >
-      ✍ Paraf & Verifikasi
-    </button>
-  `;
+  if (work.status === "Open") return "Belum dimulai";
+  if (work.status === "Proses") return "Menunggu teknisi";
+  if (!work.after_photo_path) return "Foto belum tersedia";
+  return "Belum dapat diverifikasi";
 }
+
 function actionButtons(work) {
-  const buttons = [];
+  const buttons = [
+    `
+      <button class="mini-btn btn-detail" data-detail="${work.id}" type="button">
+        👁 Detail
+      </button>
+    `
+  ];
 
-  /*
-   * Semua role boleh melihat detail.
-   */
-  buttons.push(`
-    <button
-      class="mini-btn btn-detail"
-      data-detail="${work.id}"
-      type="button"
-      title="Lihat detail pekerjaan"
-    >
-      👁 Detail
-    </button>
-  `);
-
-  /*
-   * Aksi admin.
-   */
   if (profile.role === "admin") {
     buttons.push(`
-      <button
-        class="mini-btn"
-        data-edit="${work.id}"
-        type="button"
-        title="Edit pekerjaan"
-      >
+      <button class="mini-btn" data-edit="${work.id}" type="button">
         ✎ Edit
       </button>
-    `);
-
-    buttons.push(`
-      <button
-        class="mini-btn"
-        data-del="${work.id}"
-        type="button"
-        title="Hapus pekerjaan"
-      >
+      <button class="mini-btn" data-del="${work.id}" type="button">
         🗑 Hapus
       </button>
     `);
   }
 
-  /*
-   * Aksi teknisi berdasarkan status.
-   */
   if (profile.role === "technician") {
     if (work.status === "Open") {
       buttons.push(`
-        <button
-          class="mini-btn btn-start"
-          data-start-work="${work.id}"
-          type="button"
-        >
+        <button class="mini-btn btn-start" data-start-work="${work.id}" type="button">
           ▶ Mulai Pekerjaan
         </button>
       `);
-    }
-
-    if (
-      work.status === "Proses" &&
-      !work.after_photo_path
-    ) {
+    } else if (work.status === "Proses") {
       buttons.push(`
-        <button
-          class="mini-btn btn-upload"
-          data-upload-photo="${work.id}"
-          type="button"
-        >
+        <button class="mini-btn btn-upload" data-upload-photo="${work.id}" type="button">
           📷 Tambahkan Foto
         </button>
       `);
-    }
-
-    if (
-      work.status === "Selesai" &&
-      !work.verified_at
-    ) {
+    } else if (work.status === "Selesai" && !work.verified_at) {
       buttons.push(`
-        <button
-          class="mini-btn btn-waiting"
-          type="button"
-          disabled
-        >
+        <button class="mini-btn btn-waiting" type="button" disabled>
           ⏳ Menunggu Verifikasi
         </button>
       `);
-    }
-
-    if (work.verified_at) {
+    } else if (work.verified_at) {
       buttons.push(`
-        <button
-          class="mini-btn"
-          type="button"
-          disabled
-        >
+        <button class="mini-btn" type="button" disabled>
           ✓ Terverifikasi
         </button>
       `);
     }
   }
 
-  return `
-    <div class="action-group">
-      ${buttons.join("")}
-    </div>
-  `;
+  return `<div class="action-group">${buttons.join("")}</div>`;
 }
-function openWork(id) {
-  /*
-   * Form tambah/edit utama hanya boleh digunakan admin.
-   */
-  if (profile.role !== "admin") {
-    if (id) {
-      openWorkDetail(id);
-    } else {
-      toast(
-        "Hanya admin yang dapat menambahkan pekerjaan.",
-        true
-      );
-    }
 
-    return;
-  }
-
-  const work = works.find(item => item.id === id);
-
-  $("#modalTitle").textContent = work
-    ? "Edit Pekerjaan"
-    : "Tambah Pekerjaan";
-
-  $("#workId").value = work?.id || "";
-  $("#title").value = work?.title || "";
-  $("#equipmentId").value = work?.equipment_id || "";
-  $("#pic").value = work?.pic || "";
-  $("#type").value =
-    work?.work_type || "Preventive Maintenance";
-  $("#priority").value =
-    work?.priority || "Medium";
-  $("#dueDate").value =
-    work?.due_date || "";
-  $("#status").value =
-    work?.status || "Open";
-  $("#description").value =
-    work?.description || "";
-
-  /*
-   * Pastikan semua field aktif untuk admin.
-   */
-  [
-    "#title",
-    "#equipmentId",
-    "#pic",
-    "#type",
-    "#priority",
-    "#dueDate",
-    "#status",
-    "#description",
-    "#beforePhoto",
-    "#afterPhoto"
-  ].forEach(selector => {
-    const element = $(selector);
-
-    if (element) {
-      element.disabled = false;
-    }
+function bindWorkTableEvents() {
+  $$('[data-detail]').forEach(button => {
+    button.onclick = () => openWorkDetail(button.dataset.detail);
   });
 
-  /*
-   * Kosongkan pilihan file lama.
-   */
-  $("#beforePhoto").value = "";
-  $("#afterPhoto").value = "";
+  $$('[data-edit]').forEach(button => {
+    button.onclick = () => openWork(button.dataset.edit);
+  });
 
-  $("#modal").classList.remove("hidden");
+  $$('[data-del]').forEach(button => {
+    button.onclick = () => deleteWork(button.dataset.del);
+  });
+
+  $$('[data-start-work]').forEach(button => {
+    button.onclick = () => startTechnicianWork(button.dataset.startWork);
+  });
+
+  $$('[data-upload-photo]').forEach(button => {
+    button.onclick = () => openTechnicianPhotoModal(button.dataset.uploadPhoto);
+  });
+
+  $$('[data-verify]').forEach(button => {
+    button.onclick = () => openSignature(button.dataset.verify);
+  });
 }
-function getPublicPhotoUrl(path) {
-  if (!path) {
-    return null;
-  }
 
-  const { data } = sb
-    .storage
-    .from(C.PHOTO_BUCKET)
-    .getPublicUrl(path);
+/* =========================================================
+ * DETAIL PEKERJAAN READ ONLY
+ * ========================================================= */
 
-  return data?.publicUrl || null;
-}
-async function startTechnicianWork(id) {
-  try {
-    if (profile.role !== "technician") {
-      throw new Error(
-        "Hanya teknisi yang dapat memulai pekerjaan."
-      );
-    }
-
-    const work = works.find(item => item.id === id);
-
-    if (!work) {
-      throw new Error("Data pekerjaan tidak ditemukan.");
-    }
-
-    if (work.status !== "Open") {
-      throw new Error(
-        "Pekerjaan sudah dimulai atau sudah selesai."
-      );
-    }
-
-    const confirmed = confirm(
-      `Mulai pekerjaan "${work.title}"?\n\n` +
-      "Status akan berubah dari Open menjadi Proses."
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    const { error } = await sb.rpc(
-      "technician_start_work",
-      {
-        p_work_id: id
-      }
-    );
-
-    if (error) {
-      throw error;
-    }
-
-    toast(
-      "Pekerjaan dimulai. Status berubah menjadi Proses."
-    );
-
-    await loadWorks();
-  } catch (error) {
-    console.error("Gagal memulai pekerjaan:", error);
-
-    toast(
-      "Gagal memulai pekerjaan: " + error.message,
-      true
-    );
-  }
-}
 function renderDetailPhoto(containerSelector, path, label) {
   const container = $(containerSelector);
+  if (!container) return;
+
   const publicUrl = getPublicPhotoUrl(path);
 
   if (!publicUrl) {
-    container.innerHTML = "Belum tersedia";
+    container.textContent = "Belum tersedia";
     return;
   }
 
   container.innerHTML = `
-    ${publicUrl}
-      ${publicUrl}"
-      >
+    <a href="${publicUrl}" target="_blank" rel="noopener noreferrer">
+      <img src="${publicUrl}" alt="${escapeHtml(label)}">
     </a>
   `;
-}
-function openTechnicianPhotoModal(id) {
-  if (profile.role !== "technician") {
-    toast(
-      "Hanya teknisi yang dapat mengunggah foto pekerjaan.",
-      true
-    );
-
-    return;
-  }
-
-  const work = works.find(item => item.id === id);
-
-  if (!work) {
-    toast("Data pekerjaan tidak ditemukan.", true);
-    return;
-  }
-
-  if (work.status !== "Proses") {
-    toast(
-      "Pekerjaan harus berstatus Proses sebelum foto ditambahkan.",
-      true
-    );
-
-    return;
-  }
-
-  $("#technicianWorkId").value = work.id;
-  $("#technicianWorkTitle").textContent =
-    work.title || "-";
-  $("#technicianEquipment").textContent =
-    work.equipment?.name || "-";
-
-  $("#technicianAfterPhoto").value = "";
-  $("#technicianPreviewImage").removeAttribute("src");
-  $("#technicianPhotoPreview").classList.add("hidden");
-
-  $("#technicianPhotoModal").classList.remove("hidden");
-}
-
-async function saveTechnicianPhoto(e) {
-  e.preventDefault();
-
-  const saveButton = $("#technicianPhotoSave");
-
-  try {
-    if (profile.role !== "technician") {
-      throw new Error(
-        "Hanya teknisi yang dapat mengunggah foto pekerjaan."
-      );
-    }
-
-    const workId = $("#technicianWorkId").value;
-    const file = $("#technicianAfterPhoto").files[0];
-
-    if (!workId) {
-      throw new Error("ID pekerjaan tidak ditemukan.");
-    }
-
-    if (!file) {
-      throw new Error(
-        "Foto sesudah pekerjaan wajib dipilih."
-      );
-    }
-
-    const allowedTypes = [
-      "image/jpeg",
-      "image/png",
-      "image/webp"
-    ];
-
-    if (!allowedTypes.includes(file.type)) {
-      throw new Error(
-        "Format foto harus JPG, PNG, atau WebP."
-      );
-    }
-
-    const maximumSize = 10 * 1024 * 1024;
-
-    if (file.size > maximumSize) {
-      throw new Error(
-        "Ukuran foto maksimal 10 MB."
-      );
-    }
-
-    saveButton.disabled = true;
-    saveButton.textContent = "Mengunggah...";
-
-    /*
-     * Upload file terlebih dahulu ke Supabase Storage.
-     */
-    const afterPhotoPath = await upload(
-      file,
-      workId,
-      "after"
-    );
-
-    /*
-     * Setelah upload berhasil, jalankan RPC.
-     * RPC mengisi path foto dan mengubah status menjadi Selesai.
-     */
-    const { error } = await sb.rpc(
-      "technician_complete_work",
-      {
-        p_work_id: workId,
-        p_after_photo_path: afterPhotoPath
-      }
-    );
-
-    if (error) {
-      throw error;
-    }
-
-    $("#technicianPhotoModal").classList.add("hidden");
-    $("#technicianPhotoForm").reset();
-    $("#technicianPhotoPreview").classList.add("hidden");
-
-    toast(
-      "Foto berhasil diunggah. Pekerjaan selesai dan menunggu verifikasi user."
-    );
-
-    await loadWorks();
-  } catch (error) {
-    console.error(
-      "Gagal mengunggah foto pekerjaan:",
-      error
-    );
-
-    toast(
-      "Gagal mengunggah foto: " + error.message,
-      true
-    );
-  } finally {
-    saveButton.disabled = false;
-    saveButton.textContent =
-      "Upload Foto & Selesaikan";
-  }
 }
 
 function openWorkDetail(id) {
   const work = works.find(item => item.id === id);
 
   if (!work) {
-    toast("Data pekerjaan tidak ditemukan.", true);
+    showToast("Data pekerjaan tidak ditemukan.", true);
     return;
   }
 
-  $("#detailTitle").textContent =
-    work.title || "-";
+  if (!$("#detailModal")) {
+    showToast("Modal detail belum ditambahkan pada index.html.", true);
+    return;
+  }
 
-  $("#detailEquipment").textContent =
-    work.equipment?.name || "-";
+  $("#detailTitle").textContent = work.title || "-";
+  $("#detailEquipment").textContent = work.equipment?.name || "-";
+  $("#detailPic").textContent = work.pic || "-";
+  $("#detailType").textContent = work.work_type || "-";
+  $("#detailPriority").textContent = work.priority || "-";
+  $("#detailDueDate").textContent = formatDate(work.due_date);
+  $("#detailStatus").textContent = work.verified_at
+    ? "Selesai dan terverifikasi"
+    : work.status || "-";
+  $("#detailDescription").textContent = work.description || "Tidak ada deskripsi.";
 
-  $("#detailPic").textContent =
-    work.pic || "-";
-
-  $("#detailType").textContent =
-    work.work_type || "-";
-
-  $("#detailPriority").textContent =
-    work.priority || "-";
-
-  $("#detailDueDate").textContent =
-    work.due_date
-      ? new Intl.DateTimeFormat("id-ID").format(
-          new Date(`${work.due_date}T00:00:00`)
-        )
-      : "-";
-
-  $("#detailStatus").textContent =
-    work.verified_at
-      ? "Selesai dan terverifikasi"
-      : work.status || "-";
-
-  $("#detailDescription").textContent =
-    work.description || "Tidak ada deskripsi.";
-
-  renderDetailPhoto(
-    "#detailBeforePhoto",
-    work.before_photo_path,
-    "Foto sebelum pekerjaan"
-  );
-
-  renderDetailPhoto(
-    "#detailAfterPhoto",
-    work.after_photo_path,
-    "Foto sesudah pekerjaan"
-  );
+  renderDetailPhoto("#detailBeforePhoto", work.before_photo_path, "Foto sebelum pekerjaan");
+  renderDetailPhoto("#detailAfterPhoto", work.after_photo_path, "Foto sesudah pekerjaan");
 
   $("#detailModal").classList.remove("hidden");
 }
-async function upload(file,workId,kind){if(!file)return null;let ext=file.name.split('.').pop().toLowerCase(),path=`${workId}/${kind}-${Date.now()}.${ext}`;let {error}=await sb.storage.from(C.PHOTO_BUCKET).upload(path,file,{upsert:true});if(error)throw error;return path}
-async function saveWork(e) {
-  e.preventDefault();
+
+/* =========================================================
+ * FORM ADMIN: TAMBAH DAN EDIT PEKERJAAN
+ * ========================================================= */
+
+function openWork(id) {
+  if (profile.role !== "admin") {
+    if (id) openWorkDetail(id);
+    else showToast("Hanya admin yang dapat menambahkan pekerjaan.", true);
+    return;
+  }
+
+  const work = works.find(item => item.id === id);
+
+  $("#modalTitle").textContent = work ? "Edit Pekerjaan" : "Tambah Pekerjaan";
+  $("#workId").value = work?.id || "";
+  $("#title").value = work?.title || "";
+  $("#equipmentId").value = work?.equipment_id || "";
+  $("#pic").value = work?.pic || "";
+  $("#type").value = work?.work_type || "Preventive Maintenance";
+  $("#priority").value = work?.priority || "Medium";
+  $("#dueDate").value = work?.due_date || "";
+  $("#status").value = work?.status || "Open";
+  $("#description").value = work?.description || "";
+  $("#beforePhoto").value = "";
+  $("#afterPhoto").value = "";
+
+  [
+    "#title", "#equipmentId", "#pic", "#type", "#priority",
+    "#dueDate", "#status", "#description", "#beforePhoto", "#afterPhoto"
+  ].forEach(selector => {
+    if ($(selector)) $(selector).disabled = false;
+  });
+
+  $("#modal")?.classList.remove("hidden");
+}
+
+async function uploadPhoto(file, workId, kind) {
+  if (!file) return null;
+
+  const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+  if (!allowedTypes.includes(file.type)) {
+    throw new Error("Format foto harus JPG, PNG, atau WebP.");
+  }
+
+  if (file.size > 10 * 1024 * 1024) {
+    throw new Error("Ukuran foto maksimal 10 MB.");
+  }
+
+  const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+  const path = `${workId}/${kind}-${Date.now()}.${extension}`;
+
+  const { error } = await sb.storage
+    .from(C.PHOTO_BUCKET)
+    .upload(path, file, {
+      upsert: false,
+      contentType: file.type
+    });
+
+  if (error) throw error;
+  return path;
+}
+
+async function saveWork(event) {
+  event.preventDefault();
 
   try {
+    requireRole(["admin"], "Hanya admin yang dapat menambah atau mengedit pekerjaan.");
+
     const existingId = $("#workId").value;
-    const oldWork = works.find(work => work.id === existingId);
-
-    /*
-     * MODE TEKNISI
-     * Teknisi hanya diperbolehkan mengunggah foto sesudah.
-     * Teknisi tidak menggunakan upsert karena tidak memiliki izin INSERT.
-     */
-    if (profile.role === "technician") {
-      if (!existingId || !oldWork) {
-        throw new Error("Data pekerjaan tidak ditemukan.");
-      }
-
-      const afterFile = $("#afterPhoto").files[0];
-
-      if (!afterFile) {
-        throw new Error("Pilih foto sesudah pekerjaan terlebih dahulu.");
-      }
-
-      const afterPhotoPath = await upload(
-        afterFile,
-        existingId,
-        "after"
-      );
-
-      const { error } = await sb
-        .from("works")
-        .update({
-          after_photo_path: afterPhotoPath,
-          status: "Proses",
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", existingId);
-
-      if (error) {
-        throw error;
-      }
-
-      toast("Foto pekerjaan selesai berhasil disimpan.");
-
-      $("#workForm").reset();
-      $("#modal").classList.add("hidden");
-
-      await loadWorks();
-      return;
-    }
-
-    /*
-     * MODE USER
-     * User biasa tidak boleh menyimpan form pekerjaan.
-     */
-    if (profile.role === "user") {
-      throw new Error(
-        "Pengguna tidak memiliki izin mengubah data pekerjaan."
-      );
-    }
-
-    /*
-     * MODE ADMIN
-     * Admin boleh menambah dan mengedit seluruh data pekerjaan.
-     */
-    if (profile.role !== "admin") {
-      throw new Error("Role pengguna tidak dikenali.");
-    }
-
+    const oldWork = works.find(item => item.id === existingId);
     const workId = existingId || crypto.randomUUID();
 
     const payload = {
@@ -695,237 +728,782 @@ async function saveWork(e) {
       updated_at: new Date().toISOString()
     };
 
+    if (!payload.title || !payload.equipment_id || !payload.pic) {
+      throw new Error("Judul, equipment, dan PIC wajib diisi.");
+    }
+
     const beforeFile = $("#beforePhoto").files[0];
     const afterFile = $("#afterPhoto").files[0];
 
     if (beforeFile) {
-      payload.before_photo_path = await upload(
-        beforeFile,
-        workId,
-        "before"
-      );
+      payload.before_photo_path = await uploadPhoto(beforeFile, workId, "before");
     }
 
     if (afterFile) {
-      payload.after_photo_path = await upload(
-        afterFile,
-        workId,
-        "after"
-      );
+      payload.after_photo_path = await uploadPhoto(afterFile, workId, "after");
     }
 
-    const { error } = await sb
-      .from("works")
-      .upsert(payload);
-
-    if (error) {
-      throw error;
-    }
-
-    toast("Pekerjaan berhasil disimpan.");
+    const { error } = await sb.from("works").upsert(payload);
+    if (error) throw error;
 
     $("#workForm").reset();
-    $("#modal").classList.add("hidden");
-
+    closeModal("#modal");
+    showToast("Pekerjaan berhasil disimpan.");
     await loadWorks();
   } catch (error) {
     console.error("Gagal menyimpan pekerjaan:", error);
-    toast("Gagal menyimpan: " + error.message, true);
+    showToast(`Gagal menyimpan: ${error.message}`, true);
   }
 }
-async function delWork(id){if(!confirm('Hapus pekerjaan ini?'))return;let {error}=await sb.from('works').delete().eq('id',id);if(error)return toast(error.message,true);toast('Pekerjaan dihapus');loadWorks()}
-async function finishWork(id) {
+
+async function deleteWork(id) {
   try {
-    if (profile.role !== "technician" && profile.role !== "admin") {
-      throw new Error(
-        "Pengguna tidak memiliki izin menyelesaikan pekerjaan."
-      );
-    }
+    requireRole(["admin"], "Hanya admin yang dapat menghapus pekerjaan.");
+
+    if (!window.confirm("Hapus pekerjaan ini?")) return;
+
+    const { error } = await sb.from("works").delete().eq("id", id);
+    if (error) throw error;
+
+    showToast("Pekerjaan berhasil dihapus.");
+    await loadWorks();
+  } catch (error) {
+    showToast(`Gagal menghapus: ${error.message}`, true);
+  }
+}
+
+/* =========================================================
+ * ALUR TEKNISI
+ * Open -> Proses -> Upload Foto -> Selesai
+ * ========================================================= */
+
+async function startTechnicianWork(id) {
+  try {
+    requireRole(["technician"], "Hanya teknisi yang dapat memulai pekerjaan.");
 
     const work = works.find(item => item.id === id);
 
-    if (!work) {
-      throw new Error("Data pekerjaan tidak ditemukan.");
+    if (!work) throw new Error("Data pekerjaan tidak ditemukan.");
+    if (work.status !== "Open") {
+      throw new Error("Pekerjaan sudah dimulai atau sudah selesai.");
     }
 
-    if (!work.after_photo_path) {
-      openWork(id);
-
-      toast(
-        "Tambahkan foto sesudah pekerjaan terlebih dahulu.",
-        true
-      );
-
-      return;
-    }
-
-    const { error } = await sb
-      .from("works")
-      .update({
-        status: "Selesai",
-        completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .eq("id", id);
-
-    if (error) {
-      throw error;
-    }
-
-    toast(
-      "Pekerjaan selesai dan menunggu verifikasi pengguna."
+    const confirmed = window.confirm(
+      `Mulai pekerjaan "${work.title}"?\n\nStatus akan berubah dari Open menjadi Proses.`
     );
 
-    await loadWorks();
-  } catch (error) {
-    console.error("Gagal menyelesaikan pekerjaan:", error);
-    toast("Gagal: " + error.message, true);
-  }
-}
-function openSignature(id) {
-  const work = works.find(item => item.id === id);
+    if (!confirmed) return;
 
-  if (!work) {
-    toast("Data pekerjaan tidak ditemukan.", true);
-    return;
-  }
-
-  if (!["user", "admin"].includes(profile.role)) {
-    toast(
-      "Hanya user atau admin yang dapat melakukan verifikasi.",
-      true
-    );
-
-    return;
-  }
-
-  if (work.status !== "Selesai") {
-    toast(
-      "Pekerjaan belum dinyatakan selesai oleh teknisi.",
-      true
-    );
-
-    return;
-  }
-
-  if (!work.after_photo_path) {
-    toast(
-      "Foto sesudah pekerjaan belum tersedia.",
-      true
-    );
-
-    return;
-  }
-
-  if (work.verified_at) {
-    toast(
-      "Pekerjaan ini sudah diverifikasi.",
-      true
-    );
-
-    return;
-  }
-
-  signWorkId = id;
-
-  $("#signatureModal").classList.remove("hidden");
-
-  clearSig();
-}
-
-function setupCanvas(){let c=$('#signatureCanvas');ctx=c.getContext('2d');ctx.lineWidth=3;ctx.lineCap='round';let pos=e=>{let r=c.getBoundingClientRect(),p=e.touches?.[0]||e;return{x:(p.clientX-r.left)*c.width/r.width,y:(p.clientY-r.top)*c.height/r.height}};c.onpointerdown=e=>{drawing=true;let p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y)};c.onpointermove=e=>{if(!drawing)return;let p=pos(e);ctx.lineTo(p.x,p.y);ctx.stroke()};c.onpointerup=c.onpointerleave=()=>drawing=false}
-function clearSig(){ctx?.clearRect(0,0,$('#signatureCanvas').width,$('#signatureCanvas').height)}
-async function saveVerification() {
-  try {
-	  if (profile.role !== "admin") {
-throw new Error(
-"Hanya admin yang dapat menambah atau mengedit pekerjaan."
-);
-    if (!signWorkId) {
-      throw new Error(
-        "Pekerjaan yang akan diverifikasi tidak ditemukan."
-      );
-    }
-
-    if (!["user", "admin"].includes(profile.role)) {
-      throw new Error(
-        "Anda tidak memiliki izin melakukan verifikasi."
-      );
-    }
-
-    const canvas = $("#signatureCanvas");
-
-    const signatureBlob = await new Promise(resolve => {
-      canvas.toBlob(resolve, "image/png");
+    const { error } = await sb.rpc("technician_start_work", {
+      p_work_id: id
     });
 
-    if (!signatureBlob || signatureBlob.size < 500) {
-      throw new Error(
-        "Buat paraf terlebih dahulu."
-      );
-    }
+    if (error) throw error;
 
-    const signaturePath =
-      `signatures/${signWorkId}-${Date.now()}.png`;
-
-    const { error: uploadError } = await sb
-      .storage
-      .from(C.PHOTO_BUCKET)
-      .upload(
-        signaturePath,
-        signatureBlob,
-        {
-          contentType: "image/png",
-          upsert: false
-        }
-      );
-
-    if (uploadError) {
-      throw uploadError;
-    }
-
-    const { error: verificationError } = await sb.rpc(
-      "user_verify_work",
-      {
-        p_work_id: signWorkId,
-        p_signature_path: signaturePath
-      }
-    );
-
-    if (verificationError) {
-      throw verificationError;
-    }
-
-    $("#signatureModal").classList.add("hidden");
-
-    signWorkId = null;
-
-    toast(
-      "Pekerjaan berhasil diverifikasi."
-    );
-
+    showToast("Pekerjaan dimulai. Status berubah menjadi Proses.");
     await loadWorks();
   } catch (error) {
-    console.error(
-      "Verifikasi pekerjaan gagal:",
-      error
-    );
-
-    toast(
-      "Verifikasi gagal: " + error.message,
-      true
-    );
+    console.error("Gagal memulai pekerjaan:", error);
+    showToast(`Gagal memulai pekerjaan: ${error.message}`, true);
   }
 }
-async function importWorks(e){let data=await readExcel(e.target.files[0]);let rows=data.map(r=>({title:r['Judul'],pic:r['PIC'],work_type:r['Jenis'],priority:r['Prioritas']||'Medium',due_date:excelDate(r['Tanggal Rencana']),status:r['Status']||'Open',description:r['Deskripsi']||'',equipment_id:equipment.find(x=>x.code_number==r['Code Number'])?.id,created_by:session.user.id})).filter(x=>x.title&&x.equipment_id);let {error}=await sb.from('works').insert(rows);if(error)return toast(error.message,true);toast(`${rows.length} pekerjaan diimpor`);loadWorks()}
-async function importMaster(e){let data=await readExcel(e.target.files[0]);let rows=data.map(r=>({name:r['Equipment'],plant:r['Plant'],code_number:String(r['Code Number']||''),funloc:r['Funloc']})).filter(x=>x.name&&x.code_number);let {error}=await sb.from('equipment').upsert(rows,{onConflict:'code_number'});if(error)return toast(error.message,true);toast(`${rows.length} equipment diperbarui`);loadEquipment()}
-async function readExcel(f){let buf=await f.arrayBuffer(),wb=XLSX.read(buf),ws=wb.Sheets[wb.SheetNames[0]];return XLSX.utils.sheet_to_json(ws,{defval:''})}function excelDate(v){if(!v)return null;if(typeof v==='number'){let d=XLSX.SSF.parse_date_code(v);return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`}return String(v).slice(0,10)}
-function renderMaster(){$('#masterTable').innerHTML=equipment.map(x=>`<tr><td>${esc(x.name)}</td><td>${esc(x.plant)}</td><td>${esc(x.code_number)}</td><td>${esc(x.funloc)}</td><td><button class="mini-btn" onclick='editMaster(${JSON.stringify(x)})'>✎</button></td></tr>`).join('')}
-window.editMaster=async x=>{let name=prompt('Nama equipment',x?.name||'');if(!name)return;let plant=prompt('Plant',x?.plant||''),code_number=prompt('Code Number',x?.code_number||''),funloc=prompt('Funloc',x?.funloc||'');let {error}=await sb.from('equipment').upsert({id:x?.id,name,plant,code_number,funloc});if(error)return toast(error.message,true);loadEquipment()}
-async function loadUsers(){let {data}=await sb.from('profiles').select('*').order('full_name');$('#userTable').innerHTML=(data||[]).map(x=>`<tr><td>${esc(x.full_name)}</td><td>${esc(x.email)}</td><td><select data-role-change="${x.id}"><option ${x.role==='admin'?'selected':''}>admin</option><option ${x.role==='technician'?'selected':''}>technician</option><option ${x.role==='user'?'selected':''}>user</option></select></td><td>${x.is_active?'Aktif':'Nonaktif'}</td><td><button class="mini-btn" data-toggle-user="${x.id}" data-active="${x.is_active}">${x.is_active?'Nonaktifkan':'Aktifkan'}</button></td></tr>`).join('');$$('[data-role-change]').forEach(s=>s.onchange=()=>updateProfile(s.dataset.roleChange,{role:s.value}));$$('[data-toggle-user]').forEach(b=>b.onclick=()=>updateProfile(b.dataset.toggleUser,{is_active:b.dataset.active!=='true'}))}
-async function updateProfile(id,p){let {error}=await sb.from('profiles').update(p).eq('id',id);if(error)return toast(error.message,true);toast('Pengguna diperbarui');loadUsers()}
-async function inviteUser(){let email=prompt('Email pengguna baru');if(!email)return;let full_name=prompt('Nama lengkap')||email,role=prompt('Role: admin / technician / user','user');let {data,error}=await sb.functions.invoke('admin-user',{body:{email,full_name,role}});toast(error?.message||data?.message||'Undangan diproses',!!error)}
-async function exportXlsx(returnBlob=false){toast('Membuat XLSX...');let wb=new ExcelJS.Workbook(),ws=wb.addWorksheet('Report',{properties:{defaultRowHeight:55}});ws.columns=[{header:'No',key:'no',width:6},{header:'Pekerjaan',key:'title',width:32},{header:'Equipment',key:'equipment',width:22},{header:'Jenis',key:'type',width:24},{header:'Prioritas',key:'priority',width:12},{header:'PIC',key:'pic',width:18},{header:'Status',key:'status',width:14},{header:'Foto Sebelum',key:'before',width:18},{header:'Foto Sesudah',key:'after',width:18},{header:'Verifikasi',key:'verified',width:22}];ws.getRow(1).height=26;ws.getRow(1).font={bold:true,color:{argb:'FFFFFFFF'}};ws.getRow(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1D4ED8'}};for(let [i,x] of filtered().entries()){let row=ws.addRow({no:i+1,title:x.title,equipment:x.equipment?.name,type:x.work_type,priority:x.priority,pic:x.pic,status:x.verified_at?'Selesai':x.status,verified:x.verified_by_name||''});row.height=82;for(let [path,col] of [[x.before_photo_path,8],[x.after_photo_path,9]])if(path){try{let {data}=sb.storage.from(C.PHOTO_BUCKET).getPublicUrl(path),blob=await fetch(data.publicUrl).then(r=>r.blob()),compressed=await compress(blob),buf=await compressed.arrayBuffer(),ext=compressed.type.includes('png')?'png':'jpeg',img=wb.addImage({buffer:buf,extension:ext});ws.addImage(img,{tl:{col:col-1+.08,row:i+1+.08},ext:{width:110,height:75}})}catch{}}}ws.views=[{state:'frozen',ySplit:1}];ws.autoFilter={from:'A1',to:'J1'};let buf=await wb.xlsx.writeBuffer(),blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});if(returnBlob)return blob;saveAs(blob,`maintenance-report-${new Date().toISOString().slice(0,10)}.xlsx`);toast('XLSX berhasil dibuat')}
-async function compress(blob){let bm=await createImageBitmap(blob),max=900,scale=Math.min(1,max/Math.max(bm.width,bm.height)),c=document.createElement('canvas');c.width=bm.width*scale;c.height=bm.height*scale;c.getContext('2d').drawImage(bm,0,0,c.width,c.height);return await new Promise(r=>c.toBlob(r,'image/jpeg',.72))}
-async function sendEmail(){let recipient=prompt('Kirim report ke email:',C.REPORT_RECIPIENT);if(!recipient)return;let blob=await exportXlsx(true),b64=await blobToBase64(blob);let {data,error}=await sb.functions.invoke('send-report',{body:{to:recipient,filename:`maintenance-report-${new Date().toISOString().slice(0,10)}.xlsx`,attachmentBase64:b64}});toast(error?.message||data?.message||'Email terkirim',!!error)}function blobToBase64(b){return new Promise((r,j)=>{let f=new FileReader;f.onload=()=>r(f.result.split(',')[1]);f.onerror=j;f.readAsDataURL(b)})}
-init();
+
+function openTechnicianPhotoModal(id) {
+  try {
+    requireRole(["technician"], "Hanya teknisi yang dapat mengunggah foto pekerjaan.");
+
+    const work = works.find(item => item.id === id);
+
+    if (!work) throw new Error("Data pekerjaan tidak ditemukan.");
+    if (work.status !== "Proses") {
+      throw new Error("Pekerjaan harus berstatus Proses sebelum foto ditambahkan.");
+    }
+
+    if (!$("#technicianPhotoModal")) {
+      throw new Error("Modal foto teknisi belum ditambahkan pada index.html.");
+    }
+
+    $("#technicianWorkId").value = work.id;
+    $("#technicianWorkTitle").textContent = work.title || "-";
+    $("#technicianEquipment").textContent = work.equipment?.name || "-";
+    $("#technicianAfterPhoto").value = "";
+    $("#technicianPreviewImage")?.removeAttribute("src");
+    $("#technicianPhotoPreview")?.classList.add("hidden");
+    $("#technicianPhotoModal").classList.remove("hidden");
+  } catch (error) {
+    showToast(error.message, true);
+  }
+}
+
+function closeTechnicianPhotoModal() {
+  if (technicianPreviewUrl) {
+    URL.revokeObjectURL(technicianPreviewUrl);
+    technicianPreviewUrl = null;
+  }
+
+  $("#technicianPhotoForm")?.reset();
+  $("#technicianPhotoPreview")?.classList.add("hidden");
+  closeModal("#technicianPhotoModal");
+}
+
+function previewTechnicianPhoto(event) {
+  const file = event.target.files[0];
+
+  if (technicianPreviewUrl) {
+    URL.revokeObjectURL(technicianPreviewUrl);
+    technicianPreviewUrl = null;
+  }
+
+  if (!file) {
+    $("#technicianPhotoPreview")?.classList.add("hidden");
+    return;
+  }
+
+  technicianPreviewUrl = URL.createObjectURL(file);
+  $("#technicianPreviewImage").src = technicianPreviewUrl;
+  $("#technicianPhotoPreview")?.classList.remove("hidden");
+}
+
+async function saveTechnicianPhoto(event) {
+  event.preventDefault();
+
+  const saveButton = $("#technicianPhotoSave");
+  let uploadedPath = null;
+
+  try {
+    requireRole(["technician"], "Hanya teknisi yang dapat mengunggah foto pekerjaan.");
+
+    const workId = $("#technicianWorkId").value;
+    const file = $("#technicianAfterPhoto").files[0];
+    const work = works.find(item => item.id === workId);
+
+    if (!workId || !work) throw new Error("Data pekerjaan tidak ditemukan.");
+    if (work.status !== "Proses") throw new Error("Pekerjaan tidak lagi berstatus Proses.");
+    if (!file) throw new Error("Foto sesudah pekerjaan wajib dipilih.");
+
+    setButtonLoading(saveButton, true, "Mengunggah...", "Upload Foto & Selesaikan");
+
+    uploadedPath = await uploadPhoto(file, workId, "after");
+
+    const { error } = await sb.rpc("technician_complete_work", {
+      p_work_id: workId,
+      p_after_photo_path: uploadedPath
+    });
+
+    if (error) throw error;
+
+    closeTechnicianPhotoModal();
+    showToast("Foto berhasil diunggah. Pekerjaan selesai dan menunggu verifikasi user.");
+    await loadWorks();
+  } catch (error) {
+    console.error("Gagal mengunggah foto pekerjaan:", error);
+    showToast(`Gagal mengunggah foto: ${error.message}`, true);
+  } finally {
+    setButtonLoading(saveButton, false, "Mengunggah...", "Upload Foto & Selesaikan");
+  }
+}
+
+/* =========================================================
+ * PARAF DAN VERIFIKASI USER/ADMIN
+ * ========================================================= */
+
+function setupSignatureCanvas() {
+  const canvas = $("#signatureCanvas");
+  if (!canvas) return;
+
+  signatureContext = canvas.getContext("2d");
+  signatureContext.lineWidth = 3;
+  signatureContext.lineCap = "round";
+  signatureContext.strokeStyle = "#111827";
+
+  const getPosition = event => {
+    const rectangle = canvas.getBoundingClientRect();
+    const pointer = event.touches?.[0] || event;
+
+    return {
+      x: (pointer.clientX - rectangle.left) * canvas.width / rectangle.width,
+      y: (pointer.clientY - rectangle.top) * canvas.height / rectangle.height
+    };
+  };
+
+  canvas.addEventListener("pointerdown", event => {
+    signatureDrawing = true;
+    const position = getPosition(event);
+    signatureContext.beginPath();
+    signatureContext.moveTo(position.x, position.y);
+    canvas.setPointerCapture?.(event.pointerId);
+  });
+
+  canvas.addEventListener("pointermove", event => {
+    if (!signatureDrawing) return;
+    const position = getPosition(event);
+    signatureContext.lineTo(position.x, position.y);
+    signatureContext.stroke();
+  });
+
+  ["pointerup", "pointercancel", "pointerleave"].forEach(eventName => {
+    canvas.addEventListener(eventName, () => {
+      signatureDrawing = false;
+    });
+  });
+}
+
+function clearSignature() {
+  const canvas = $("#signatureCanvas");
+  if (canvas && signatureContext) {
+    signatureContext.clearRect(0, 0, canvas.width, canvas.height);
+  }
+}
+
+function openSignature(id) {
+  try {
+    requireRole(["user", "admin"], "Hanya user atau admin yang dapat melakukan verifikasi.");
+
+    const work = works.find(item => item.id === id);
+
+    if (!work) throw new Error("Data pekerjaan tidak ditemukan.");
+    if (work.status !== "Selesai") {
+      throw new Error("Pekerjaan belum dinyatakan selesai oleh teknisi.");
+    }
+    if (!work.after_photo_path) {
+      throw new Error("Foto sesudah pekerjaan belum tersedia.");
+    }
+    if (work.verified_at) {
+      throw new Error("Pekerjaan ini sudah diverifikasi.");
+    }
+
+    signWorkId = id;
+    clearSignature();
+    $("#signatureModal")?.classList.remove("hidden");
+  } catch (error) {
+    showToast(error.message, true);
+  }
+}
+
+async function saveVerification() {
+  const saveButton = $("#saveSignature");
+
+  try {
+    requireRole(["user", "admin"], "Anda tidak memiliki izin melakukan verifikasi.");
+
+    if (!signWorkId) throw new Error("Pekerjaan yang akan diverifikasi tidak ditemukan.");
+
+    const canvas = $("#signatureCanvas");
+    const signatureBlob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+
+    if (!signatureBlob || signatureBlob.size < 500) {
+      throw new Error("Buat paraf terlebih dahulu.");
+    }
+
+    setButtonLoading(saveButton, true, "Menyimpan...", "Simpan & Verifikasi");
+
+    const signaturePath = `signatures/${signWorkId}-${Date.now()}.png`;
+
+    const { error: uploadError } = await sb.storage
+      .from(C.PHOTO_BUCKET)
+      .upload(signaturePath, signatureBlob, {
+        contentType: "image/png",
+        upsert: false
+      });
+
+    if (uploadError) throw uploadError;
+
+    const { error: verificationError } = await sb.rpc("user_verify_work", {
+      p_work_id: signWorkId,
+      p_signature_path: signaturePath
+    });
+
+    if (verificationError) throw verificationError;
+
+    closeModal("#signatureModal");
+    signWorkId = null;
+    showToast("Pekerjaan berhasil diverifikasi.");
+    await loadWorks();
+  } catch (error) {
+    console.error("Verifikasi pekerjaan gagal:", error);
+    showToast(`Verifikasi gagal: ${error.message}`, true);
+  } finally {
+    setButtonLoading(saveButton, false, "Menyimpan...", "Simpan & Verifikasi");
+  }
+}
+
+/* =========================================================
+ * IMPORT EXCEL
+ * ========================================================= */
+
+async function readExcel(file) {
+  if (!file) throw new Error("Pilih file Excel terlebih dahulu.");
+
+  const buffer = await file.arrayBuffer();
+  const workbook = XLSX.read(buffer);
+  const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+
+  return XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+}
+
+function convertExcelDate(value) {
+  if (!value) return null;
+
+  if (typeof value === "number") {
+    const date = XLSX.SSF.parse_date_code(value);
+    return `${date.y}-${String(date.m).padStart(2, "0")}-${String(date.d).padStart(2, "0")}`;
+  }
+
+  return String(value).slice(0, 10);
+}
+
+async function importWorks(event) {
+  try {
+    requireRole(["admin"], "Hanya admin yang dapat mengimpor pekerjaan.");
+
+    const rows = await readExcel(event.target.files[0]);
+
+    const payload = rows.map(row => ({
+      title: String(row["Judul"] || "").trim(),
+      pic: String(row["PIC"] || "").trim(),
+      work_type: row["Jenis"],
+      priority: row["Prioritas"] || "Medium",
+      due_date: convertExcelDate(row["Tanggal Rencana"]),
+      status: row["Status"] || "Open",
+      description: row["Deskripsi"] || "",
+      equipment_id: equipment.find(item =>
+        String(item.code_number) === String(row["Code Number"])
+      )?.id,
+      created_by: session.user.id
+    })).filter(row => row.title && row.pic && row.equipment_id);
+
+    if (!payload.length) {
+      throw new Error("Tidak ada baris valid. Periksa Code Number dan header template.");
+    }
+
+    const { error } = await sb.from("works").insert(payload);
+    if (error) throw error;
+
+    showToast(`${payload.length} pekerjaan berhasil diimpor.`);
+    event.target.value = "";
+    await loadWorks();
+  } catch (error) {
+    showToast(`Import pekerjaan gagal: ${error.message}`, true);
+  }
+}
+
+async function importMaster(event) {
+  try {
+    requireRole(["admin"], "Hanya admin yang dapat mengimpor equipment.");
+
+    const rows = await readExcel(event.target.files[0]);
+
+    const payload = rows.map(row => ({
+      name: String(row["Equipment"] || "").trim(),
+      plant: String(row["Plant"] || "").trim(),
+      code_number: String(row["Code Number"] || "").trim(),
+      funloc: String(row["Funloc"] || "").trim()
+    })).filter(row => row.name && row.code_number);
+
+    if (!payload.length) throw new Error("Tidak ada data equipment yang valid.");
+
+    const { error } = await sb
+      .from("equipment")
+      .upsert(payload, { onConflict: "code_number" });
+
+    if (error) throw error;
+
+    showToast(`${payload.length} equipment berhasil diperbarui.`);
+    event.target.value = "";
+    await loadEquipment();
+  } catch (error) {
+    showToast(`Import equipment gagal: ${error.message}`, true);
+  }
+}
+
+/* =========================================================
+ * MASTER EQUIPMENT
+ * ========================================================= */
+
+function renderMaster() {
+  const table = $("#masterTable");
+  if (!table) return;
+
+  table.innerHTML = equipment.map(item => `
+    <tr>
+      <td>${escapeHtml(item.name)}</td>
+      <td>${escapeHtml(item.plant || "-")}</td>
+      <td>${escapeHtml(item.code_number)}</td>
+      <td>${escapeHtml(item.funloc || "-")}</td>
+      <td>
+        <button class="mini-btn" data-master-edit="${item.id}" type="button">
+          ✎ Edit
+        </button>
+      </td>
+    </tr>
+  `).join("") || '<tr><td colspan="5">Belum ada equipment.</td></tr>';
+
+  $$('[data-master-edit]').forEach(button => {
+    button.onclick = () => {
+      const item = equipment.find(value => value.id === button.dataset.masterEdit);
+      editMaster(item);
+    };
+  });
+}
+
+async function editMaster(item = null) {
+  try {
+    requireRole(["admin"], "Hanya admin yang dapat mengelola equipment.");
+
+    const name = window.prompt("Nama equipment", item?.name || "");
+    if (!name) return;
+
+    const plant = window.prompt("Plant", item?.plant || "") ?? "";
+    const codeNumber = window.prompt("Code Number", item?.code_number || "");
+    if (!codeNumber) throw new Error("Code Number wajib diisi.");
+
+    const funloc = window.prompt("Funloc", item?.funloc || "") ?? "";
+
+    const payload = {
+      name: name.trim(),
+      plant: plant.trim(),
+      code_number: codeNumber.trim(),
+      funloc: funloc.trim()
+    };
+
+    if (item?.id) payload.id = item.id;
+
+    const { error } = await sb.from("equipment").upsert(payload);
+    if (error) throw error;
+
+    showToast("Equipment berhasil disimpan.");
+    await loadEquipment();
+  } catch (error) {
+    showToast(`Gagal menyimpan equipment: ${error.message}`, true);
+  }
+}
+
+/* =========================================================
+ * KELOLA PENGGUNA
+ * ========================================================= */
+
+async function loadUsers() {
+  if (profile?.role !== "admin") return;
+
+  const { data, error } = await sb
+    .from("profiles")
+    .select("*")
+    .order("full_name");
+
+  if (error) {
+    showToast(`Gagal mengambil pengguna: ${error.message}`, true);
+    return;
+  }
+
+  const table = $("#userTable");
+  if (!table) return;
+
+  table.innerHTML = (data || []).map(user => `
+    <tr>
+      <td>${escapeHtml(user.full_name || "-")}</td>
+      <td>${escapeHtml(user.email || "-")}</td>
+      <td>
+        <select data-role-change="${user.id}">
+          <option value="admin" ${user.role === "admin" ? "selected" : ""}>admin</option>
+          <option value="technician" ${user.role === "technician" ? "selected" : ""}>technician</option>
+          <option value="user" ${user.role === "user" ? "selected" : ""}>user</option>
+        </select>
+      </td>
+      <td>${user.is_active ? "Aktif" : "Nonaktif"}</td>
+      <td>
+        <button
+          class="mini-btn"
+          data-toggle-user="${user.id}"
+          data-active="${user.is_active}"
+          type="button"
+        >
+          ${user.is_active ? "Nonaktifkan" : "Aktifkan"}
+        </button>
+      </td>
+    </tr>
+  `).join("");
+
+  $$('[data-role-change]').forEach(select => {
+    select.onchange = () => updateProfile(select.dataset.roleChange, {
+      role: select.value
+    });
+  });
+
+  $$('[data-toggle-user]').forEach(button => {
+    button.onclick = () => updateProfile(button.dataset.toggleUser, {
+      is_active: button.dataset.active !== "true"
+    });
+  });
+}
+
+async function updateProfile(id, updates) {
+  try {
+    requireRole(["admin"], "Hanya admin yang dapat mengubah pengguna.");
+
+    const { error } = await sb.from("profiles").update(updates).eq("id", id);
+    if (error) throw error;
+
+    showToast("Pengguna berhasil diperbarui.");
+    await loadUsers();
+  } catch (error) {
+    showToast(`Gagal memperbarui pengguna: ${error.message}`, true);
+  }
+}
+
+async function inviteUser() {
+  try {
+    requireRole(["admin"], "Hanya admin yang dapat mengundang pengguna.");
+
+    const email = window.prompt("Email pengguna baru");
+    if (!email) return;
+
+    const fullName = window.prompt("Nama lengkap") || email;
+    const role = (window.prompt("Role: admin / technician / user", "user") || "user")
+      .toLowerCase()
+      .trim();
+
+    if (!["admin", "technician", "user"].includes(role)) {
+      throw new Error("Role harus admin, technician, atau user.");
+    }
+
+    const { data, error } = await sb.functions.invoke("admin-user", {
+      body: {
+        email: email.trim(),
+        full_name: fullName.trim(),
+        role
+      }
+    });
+
+    if (error) throw error;
+
+    showToast(data?.message || "Undangan pengguna berhasil dikirim.");
+    await loadUsers();
+  } catch (error) {
+    showToast(`Undangan gagal: ${error.message}`, true);
+  }
+}
+
+/* =========================================================
+ * EXPORT XLSX DENGAN FOTO
+ * ========================================================= */
+
+async function compressImage(blob) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(blob);
+
+    image.onload = () => {
+      try {
+        const maximumSize = 900;
+        const scale = Math.min(1, maximumSize / Math.max(image.width, image.height));
+        const canvas = document.createElement("canvas");
+
+        canvas.width = Math.max(1, Math.round(image.width * scale));
+        canvas.height = Math.max(1, Math.round(image.height * scale));
+
+        const context = canvas.getContext("2d");
+        context.fillStyle = "#ffffff";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+        canvas.toBlob(compressedBlob => {
+          URL.revokeObjectURL(objectUrl);
+
+          if (!compressedBlob) {
+            reject(new Error("Foto tidak dapat dikompresi."));
+            return;
+          }
+
+          resolve(compressedBlob);
+        }, "image/jpeg", 0.72);
+      } catch (error) {
+        URL.revokeObjectURL(objectUrl);
+        reject(error);
+      }
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Foto tidak dapat dibaca browser."));
+    };
+
+    image.src = objectUrl;
+  });
+}
+
+async function addPhotoToWorksheet(workbook, worksheet, path, column, rowNumber) {
+  if (!path) return;
+
+  try {
+    const publicUrl = getPublicPhotoUrl(path);
+    if (!publicUrl) return;
+
+    const response = await fetch(publicUrl);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const originalBlob = await response.blob();
+    const compressedBlob = await compressImage(originalBlob);
+    const buffer = await compressedBlob.arrayBuffer();
+
+    const imageId = workbook.addImage({
+      buffer,
+      extension: "jpeg"
+    });
+
+    worksheet.addImage(imageId, {
+      tl: { col: column - 1 + 0.08, row: rowNumber - 1 + 0.08 },
+      ext: { width: 110, height: 75 }
+    });
+  } catch (error) {
+    console.warn("Foto tidak dapat dimasukkan ke XLSX:", path, error);
+  }
+}
+
+async function exportXlsx(returnBlob = false) {
+  try {
+    if (typeof ExcelJS === "undefined") {
+      throw new Error("Library ExcelJS tidak termuat.");
+    }
+
+    if (!returnBlob && typeof saveAs === "undefined") {
+      throw new Error("Library FileSaver tidak termuat.");
+    }
+
+    showToast("Membuat file XLSX...");
+
+    const reportWorks = getFilteredWorks();
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Report", {
+      properties: { defaultRowHeight: 55 }
+    });
+
+    worksheet.columns = [
+      { header: "No", key: "no", width: 6 },
+      { header: "Pekerjaan", key: "title", width: 32 },
+      { header: "Equipment", key: "equipment", width: 22 },
+      { header: "Code Number", key: "code", width: 18 },
+      { header: "Jenis", key: "type", width: 24 },
+      { header: "Prioritas", key: "priority", width: 12 },
+      { header: "PIC", key: "pic", width: 18 },
+      { header: "Status", key: "status", width: 18 },
+      { header: "Foto Sebelum", key: "before", width: 18 },
+      { header: "Foto Sesudah", key: "after", width: 18 },
+      { header: "Verifikasi", key: "verified", width: 22 }
+    ];
+
+    const header = worksheet.getRow(1);
+    header.height = 28;
+    header.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    header.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF1D4ED8" }
+    };
+    header.alignment = { vertical: "middle", horizontal: "center" };
+
+    for (const [index, work] of reportWorks.entries()) {
+      const rowNumber = index + 2;
+      const row = worksheet.addRow({
+        no: index + 1,
+        title: work.title,
+        equipment: work.equipment?.name || "-",
+        code: work.equipment?.code_number || "-",
+        type: work.work_type,
+        priority: work.priority,
+        pic: work.pic,
+        status: work.verified_at ? "Selesai Terverifikasi" : work.status,
+        verified: work.verified_by_name || ""
+      });
+
+      row.height = 82;
+      row.alignment = { vertical: "middle", wrapText: true };
+
+      await addPhotoToWorksheet(workbook, worksheet, work.before_photo_path, 9, rowNumber);
+      await addPhotoToWorksheet(workbook, worksheet, work.after_photo_path, 10, rowNumber);
+    }
+
+    worksheet.views = [{ state: "frozen", ySplit: 1 }];
+    worksheet.autoFilter = { from: "A1", to: "K1" };
+
+    worksheet.eachRow(row => {
+      row.eachCell(cell => {
+        cell.border = {
+          top: { style: "thin", color: { argb: "FFE5E7EB" } },
+          left: { style: "thin", color: { argb: "FFE5E7EB" } },
+          bottom: { style: "thin", color: { argb: "FFE5E7EB" } },
+          right: { style: "thin", color: { argb: "FFE5E7EB" } }
+        };
+      });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    });
+
+    if (returnBlob) return blob;
+
+    const filename = `maintenance-report-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    saveAs(blob, filename);
+    showToast("File XLSX berhasil dibuat.");
+    return null;
+  } catch (error) {
+    console.error("Export XLSX gagal:", error);
+    showToast(`Export gagal: ${error.message}`, true);
+    throw error;
+  }
+}
+
+/* =========================================================
+ * KIRIM EMAIL MANUAL
+ * ========================================================= */
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function sendEmail() {
+  try {
+    requireRole(["admin"], "Hanya admin yang dapat mengirim report.");
+
+    const recipient = window.prompt(
+      "Kirim report ke email:",
+      C.REPORT_RECIPIENT || ""
+    );
+
+    if (!recipient) return;
+
+    const blob = await exportXlsx(true);
+    const attachmentBase64 = await blobToBase64(blob);
+    const filename = `maintenance-report-${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+    const { data, error } = await sb.functions.invoke("send-report", {
+      body: {
+        to: recipient.trim(),
+        filename,
+        attachmentBase64
+      }
+    });
+
+    if (error) throw error;
+
+    showToast(data?.message || "Email berhasil dikirim.");
+  } catch (error) {
+    console.error("Pengiriman email gagal:", error);
+    showToast(`Email gagal: ${error.message}`, true);
+  }
+}
+
+/* =========================================================
+ * MULAI APLIKASI
+ * ========================================================= */
+
+init().catch(error => {
+  console.error("Inisialisasi aplikasi gagal:", error);
+  showToast(`Aplikasi gagal dimuat: ${error.message}`, true);
+});
