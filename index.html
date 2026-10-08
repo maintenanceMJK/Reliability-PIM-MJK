@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#071019">
+  <title>Reliability PT. Padi Indonesia Maju - Mojokerto</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <section id="loginView" class="login-view">
+    <div class="login-orb orb-one"></div>
+    <div class="login-orb orb-two"></div>
+
+    <div class="login-card glass-card">
+      <div class="brand login-brand">
+        <div class="brand-logo brand-logo-login">
+          <img src="assets/logo-pim.png" alt="Logo PT Padi Indonesia Maju">
+        </div>
+        <div class="brand-copy">
+          <strong>Reliability</strong>
+          <small>PT. Padi Indonesia Maju - Mojokerto</small>
+        </div>
+      </div>
+
+      <div class="login-heading">
+        <span class="eyebrow">SECURE MAINTENANCE WORKSPACE</span>
+        <h1>Selamat datang</h1>
+        <p>Masuk untuk mengelola pekerjaan reliability secara aman dan terpusat.</p>
+      </div>
+
+      <form id="loginForm" class="login-form">
+        <label>
+          Email
+          <div class="input-shell">
+            <i data-lucide="mail"></i>
+            <input id="loginEmail" type="email" autocomplete="email" placeholder="nama@perusahaan.com" required>
+          </div>
+        </label>
+
+        <label>
+          Kata sandi
+          <div class="input-shell">
+            <i data-lucide="lock-keyhole"></i>
+            <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Masukkan kata sandi" required>
+          </div>
+        </label>
+
+        <button id="loginButton" class="btn btn-primary btn-wide" type="submit">
+          <i data-lucide="log-in"></i>
+          <span>Masuk</span>
+        </button>
+      </form>
+
+      <p id="loginMsg" class="form-message" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <div id="appView" class="app hidden">
+    <aside class="sidebar">
+      <div class="brand sidebar-brand">
+        <div class="brand-logo brand-logo-sidebar">
+          <img src="assets/logo-pim.png" alt="Logo PT Padi Indonesia Maju">
+        </div>
+        <div class="brand-copy">
+          <strong>Reliability</strong>
+          <small>PT. PIM Mojokerto</small>
+        </div>
+      </div>
+
+      <nav id="nav" class="sidebar-nav">
+        <button class="active" data-page="dashboard" type="button">
+          <i data-lucide="layout-dashboard"></i><span>Dashboard</span>
+        </button>
+        <button data-page="works" type="button">
+          <i data-lucide="clipboard-check"></i><span>Pekerjaan</span>
+        </button>
+        <button data-page="manage" data-admin type="button">
+          <i data-lucide="database"></i><span>Master Data</span>
+        </button>
+        <button data-page="users" data-admin type="button">
+          <i data-lucide="users"></i><span>Pengguna</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-user">
+        <div class="user-avatar"><i data-lucide="user-round"></i></div>
+        <div class="user-copy">
+          <strong id="userName">Pengguna</strong>
+          <small id="userRole">-</small>
+        </div>
+        <button id="logoutBtn" class="logout-button" type="button" title="Keluar">
+          <i data-lucide="log-out"></i>
+        </button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <span class="eyebrow">MAINTENANCE CONTROL CENTER</span>
+          <h1 id="pageTitle">Dashboard</h1>
+          <p id="today" class="muted"></p>
+        </div>
+        <div class="topbar-actions">
+          <button id="emailBtn" class="btn btn-violet" data-admin type="button">
+            <i data-lucide="send"></i><span>Kirim XLSX</span>
+          </button>
+          <button id="exportBtn" class="btn btn-primary" type="button">
+            <i data-lucide="file-spreadsheet"></i><span>Export XLSX</span>
+          </button>
+        </div>
+      </header>
+
+      <section id="dashboardPage" class="page">
+        <div class="kpi-grid">
+          <article class="kpi-card kpi-total">
+            <div class="kpi-icon"><i data-lucide="layers-3"></i></div>
+            <span>Total</span><strong id="kpiTotal">0</strong><small>Semua pekerjaan</small>
+          </article>
+          <article class="kpi-card kpi-open">
+            <div class="kpi-icon"><i data-lucide="circle-alert"></i></div>
+            <span>Open</span><strong id="kpiOpen">0</strong><small>Belum dimulai</small>
+          </article>
+          <article class="kpi-card kpi-process">
+            <div class="kpi-icon"><i data-lucide="loader-circle"></i></div>
+            <span>Proses</span><strong id="kpiProcess">0</strong><small>Sedang dikerjakan</small>
+          </article>
+          <article class="kpi-card kpi-done">
+            <div class="kpi-icon"><i data-lucide="badge-check"></i></div>
+            <span>Selesai</span><strong id="kpiDone">0</strong><small>Sudah diverifikasi</small>
+          </article>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div><span class="eyebrow">LIVE ACTIVITY</span><h2>Pekerjaan terbaru</h2></div>
+            <button class="btn btn-ghost" data-goto="works" type="button">
+              <span>Lihat semua</span><i data-lucide="arrow-right"></i>
+            </button>
+          </div>
+          <div id="recentList" class="recent-list"></div>
+        </div>
+      </section>
+
+      <section id="worksPage" class="page hidden">
+        <div class="panel toolbar">
+          <div class="search-box">
+            <i data-lucide="search"></i>
+            <input id="searchInput" placeholder="Cari pekerjaan, equipment, PIC...">
+          </div>
+          <select id="statusFilter"><option value="">Semua status</option><option>Open</option><option>Proses</option><option>Selesai</option></select>
+          <select id="priorityFilter"><option value="">Semua prioritas</option><option>Low</option><option>Medium</option><option>High</option><option>Critical</option></select>
+          <select id="typeFilter"><option value="">Semua jenis</option><option>Preventive Maintenance</option><option>Condition Monitoring</option><option>Corrective Maintenance</option><option>Others</option></select>
+          <input id="picFilter" placeholder="Filter PIC">
+          <button id="resetFilter" class="btn btn-ghost" type="button"><i data-lucide="rotate-ccw"></i><span>Reset</span></button>
+          <button id="importWorksBtn" class="btn btn-secondary" data-admin type="button"><i data-lucide="file-up"></i><span>Mass Upload</span></button>
+            <input id="importWorksFile" type="file" accept=".xlsx,.xls" hidden>
+            <button id="addBtn" class="btn btn-primary" data-admin type="button"><i data-lucide="plus"></i><span>Tambah</span></button>
+        </div>
+
+        <div class="panel table-container">
+          <table>
+            <thead><tr><th>No</th><th>Pekerjaan</th><th>Equipment</th><th>Jenis</th><th>Prioritas</th><th>PIC</th><th>Status</th><th>Foto</th><th>Verifikasi</th><th>Aksi</th></tr></thead>
+            <tbody id="workTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="managePage" class="page hidden">
+        <div class="panel">
+          <div class="panel-header"><h2>Master Equipment</h2><button id="importEquipmentBtn" class="btn btn-secondary" type="button"><i data-lucide="file-up"></i>Mass Upload Equipment</button><input id="importEquipmentFile" type="file" accept=".xlsx,.xls" hidden><button id="masterAddBtn" class="btn btn-primary"><i data-lucide="plus"></i>Equipment</button></div>
+          <div class="table-container"><table><thead><tr><th>Equipment</th><th>Plant</th><th>Code Number</th><th>Funloc</th><th>Aksi</th></tr></thead><tbody id="masterTable"></tbody></table></div>
+        </div>
+      </section>
+
+      <section id="usersPage" class="page hidden">
+        <div class="panel">
+          <div class="panel-header"><h2>Kelola Pengguna</h2><button id="userAddBtn" class="btn btn-primary"><i data-lucide="user-plus"></i>Undang</button></div>
+          <div class="table-container"><table><thead><tr><th>Nama</th><th>Email</th><th>Role</th><th>Status</th></tr></thead><tbody id="userTable"></tbody></table></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="workModal" class="modal hidden">
+    <div class="modal-card modal-large">
+      <div class="modal-header"><div><span class="eyebrow">WORK ORDER</span><h2 id="workModalTitle">Tambah Pekerjaan</h2></div><button class="icon-button" data-close="workModal">×</button></div>
+      <form id="workForm" class="form-grid">
+        <input id="workId" type="hidden">
+        <label class="span-two">Judul pekerjaan<input id="title" required></label>
+        <label>Equipment<select id="equipmentId" required></select></label>
+        <label>PIC<input id="pic" required></label>
+        <label>Jenis<select id="type"><option>Preventive Maintenance</option><option>Condition Monitoring</option><option>Corrective Maintenance</option><option>Others</option></select></label>
+        <label>Prioritas<select id="priority"><option>Low</option><option selected>Medium</option><option>High</option><option>Critical</option></select></label>
+        <label>Tanggal rencana<input id="dueDate" type="date"></label>
+        <label>Status<select id="status"><option>Open</option><option>Proses</option><option>Selesai</option></select></label>
+        <label class="span-two">Deskripsi<textarea id="description" rows="5"></textarea></label>
+        <label>Foto sebelum<input id="beforePhoto" type="file" accept="image/*"></label>
+        <label>Foto sesudah<input id="afterPhoto" type="file" accept="image/*"></label>
+        <div class="span-two modal-actions"><button class="btn btn-ghost" data-close="workModal" type="button">Batal</button><button class="btn btn-primary" type="submit"><i data-lucide="save"></i>Simpan</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="detailModal" class="modal hidden"><div class="modal-card modal-large"><div class="modal-header"><div><span class="eyebrow">READ ONLY</span><h2>Detail Pekerjaan</h2></div><button class="icon-button" data-close="detailModal">×</button></div><div id="detailGrid" class="detail-grid"></div><div class="modal-actions"><button class="btn btn-ghost" data-close="detailModal">Tutup</button></div></div></div>
+
+  <div id="photoModal" class="modal hidden"><div class="modal-card"><div class="modal-header"><div><span class="eyebrow">TECHNICIAN UPDATE</span><h2>Tambahkan Foto</h2></div><button class="icon-button" data-close="photoModal">×</button></div><div id="photoWorkInfo" class="work-summary"></div><form id="photoForm"><input id="photoWorkId" type="hidden"><label>Foto sesudah<input id="technicianPhoto" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" required></label><div id="photoPreview" class="photo-preview hidden"><img id="previewImage" alt="Pratinjau foto"></div><div class="info-box">Setelah foto berhasil diunggah, status menjadi Selesai dan menunggu verifikasi user.</div><div class="modal-actions"><button class="btn btn-ghost" data-close="photoModal" type="button">Batal</button><button class="btn btn-primary" type="submit"><i data-lucide="upload-cloud"></i>Upload & Selesaikan</button></div></form></div></div>
+
+  <div id="signatureModal" class="modal hidden"><div class="modal-card"><div class="modal-header"><div><span class="eyebrow">USER VERIFICATION</span><h2>Paraf Verifikasi</h2></div><button class="icon-button" data-close="signatureModal">×</button></div><canvas id="signatureCanvas" width="700" height="260"></canvas><div class="modal-actions"><button id="clearSignature" class="btn btn-ghost">Hapus</button><button id="saveSignature" class="btn btn-primary">Simpan & Verifikasi</button></div></div></div>
+
+  <div id="toast" class="toast" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
