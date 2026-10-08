@@ -2,3 +2,5 @@
 
 .month-filter{position:relative;min-width:185px}.month-filter svg{position:absolute;left:13px;top:13px;width:17px;height:17px;color:#6f85a5;pointer-events:none}.month-filter input{padding-left:40px;color-scheme:dark}.month-filter input::-webkit-calendar-picker-indicator{cursor:pointer;filter:invert(1) opacity(.72)}
 @media(max-width:780px){.month-filter{width:100%;min-width:0}}
+
+.month-cell{display:inline-flex;align-items:center;gap:7px;min-width:126px;color:#bae6fd;font-size:12px;font-weight:700;white-space:nowrap}.month-cell svg{width:15px;height:15px;color:#38bdf8}.table-wrap table{min-width:1200px}
