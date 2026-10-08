@@ -1,109 +1,14 @@
-<!doctype html>
-<html lang="id">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#0f172a">
-  <title>Reliability PT. Padi Indonesia Maju - Mojokerto</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-  <section id="loginView" class="login-view">
-    <div class="login-card glass">
-      <div class="brand login-brand">
-        <img src="assets/logo.png" alt="Logo aplikasi" onerror="this.style.display='none'">
-        <div><strong>Reliability</strong><small>PT. Padi Indonesia Maju - Mojokerto</small></div>
-      </div>
-      <div class="login-heading"><h1>Masuk ke sistem</h1><p>Kelola pekerjaan reliability secara aman dan terpusat.</p></div>
-      <form id="loginForm" novalidate>
-        <label>Email<input id="loginEmail" type="email" required autocomplete="email" placeholder="nama@perusahaan.com"></label>
-        <label>Kata sandi<input id="loginPassword" type="password" required autocomplete="current-password" placeholder="Masukkan kata sandi"></label>
-        <button class="btn primary wide" type="submit">Masuk</button>
-      </form>
-      <p id="loginMsg" class="form-msg" aria-live="polite"></p>
-    </div>
-  </section>
-
-  <div id="appView" class="app hidden">
-    <aside class="sidebar">
-      <div class="brand side-brand">
-        <img src="assets/logo.png" alt="Logo aplikasi" onerror="this.style.display='none'">
-        <div><strong>Reliability</strong><small>PT. PIM Mojokerto</small></div>
-      </div>
-      <nav id="nav">
-        <button data-page="dashboard" class="active" type="button"><b>▦</b><span>Dashboard</span></button>
-        <button data-page="works" type="button"><b>🛠</b><span>Pekerjaan</span></button>
-        <button data-page="manage" data-role="admin" type="button"><b>⚙</b><span>Kelola Master</span></button>
-        <button data-page="users" data-role="admin" type="button"><b>👥</b><span>Pengguna</span></button>
-      </nav>
-      <div class="user-box"><strong id="userName">Pengguna</strong><small id="userRole">-</small><button id="logoutBtn" class="link-btn" type="button">Keluar</button></div>
-    </aside>
-
-    <main>
-      <header class="topbar">
-        <div><h1 id="pageTitle">Dashboard</h1><p id="today"></p></div>
-        <div class="actions"><button id="emailBtn" class="btn secondary" data-role="admin" type="button">✉ Kirim XLSX</button><button id="exportBtn" class="btn primary" type="button">⇩ Export XLSX</button></div>
-      </header>
-
-      <section id="dashboardPage" class="page">
-        <div class="kpi-grid">
-          <article class="kpi total"><span>Total</span><strong id="kpiTotal">0</strong><small>Semua pekerjaan</small></article>
-          <article class="kpi open"><span>Open</span><strong id="kpiOpen">0</strong><small>Belum dimulai</small></article>
-          <article class="kpi process"><span>Proses</span><strong id="kpiProcess">0</strong><small>Proses atau menunggu verifikasi</small></article>
-          <article class="kpi done"><span>Selesai</span><strong id="kpiDone">0</strong><small>Sudah diverifikasi</small></article>
-        </div>
-        <div class="panel"><div class="panel-head"><h2>Pekerjaan terbaru</h2><button class="btn ghost" data-goto="works" type="button">Lihat semua</button></div><div id="recentList" class="recent-list"></div></div>
-      </section>
-
-      <section id="worksPage" class="page hidden">
-        <div class="toolbar panel">
-          <input id="searchInput" class="grow" placeholder="Cari pekerjaan, PIC, equipment...">
-          <select id="statusFilter"><option value="">Semua status</option><option>Open</option><option>Proses</option><option>Selesai</option></select>
-          <select id="priorityFilter"><option value="">Semua prioritas</option><option>Low</option><option>Medium</option><option>High</option><option>Critical</option></select>
-          <select id="typeFilter"><option value="">Semua jenis</option><option>Preventive Maintenance</option><option>Condition Monitoring</option><option>Corrective Maintenance</option><option>Others</option></select>
-          <input id="picFilter" placeholder="Filter PIC">
-          <button id="resetFilter" class="btn ghost" type="button">Reset</button>
-          <button id="importBtn" class="btn secondary" data-role="admin" type="button">↑ Import Excel</button>
-          <input id="importFile" type="file" accept=".xlsx,.xls" hidden>
-          <button id="addBtn" class="btn primary" data-role="admin" type="button">+ Tambah</button>
-        </div>
-        <div class="table-wrap panel">
-          <table><thead><tr><th>No</th><th>Pekerjaan</th><th>Equipment</th><th>Jenis</th><th>Prioritas</th><th>PIC</th><th>Status</th><th>Foto</th><th>Verifikasi</th><th>Aksi</th></tr></thead><tbody id="workTable"></tbody></table>
-        </div>
-      </section>
-
-      <section id="managePage" class="page hidden">
-        <div class="panel"><div class="panel-head"><h2>Master Equipment</h2><div class="actions"><button id="masterImportBtn" class="btn secondary" type="button">↑ Import Master</button><input id="masterFile" type="file" accept=".xlsx,.xls" hidden><button id="masterAddBtn" class="btn primary" type="button">+ Equipment</button></div></div><div class="table-wrap"><table><thead><tr><th>Equipment</th><th>Plant</th><th>Code Number</th><th>Funloc</th><th>Aksi</th></tr></thead><tbody id="masterTable"></tbody></table></div></div>
-      </section>
-
-      <section id="usersPage" class="page hidden">
-        <div class="panel"><div class="panel-head"><h2>Kelola Pengguna</h2><button id="userAddBtn" class="btn primary" type="button">+ Undang Pengguna</button></div><div class="table-wrap"><table><thead><tr><th>Nama</th><th>Email</th><th>Role</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="userTable"></tbody></table></div></div>
-      </section>
-    </main>
-  </div>
-
-  <!-- Form admin saja -->
-  <div id="modal" class="modal hidden"><div class="modal-card large-card"><div class="modal-head"><div><h2 id="modalTitle">Tambah Pekerjaan</h2><p>Form ini hanya dapat digunakan oleh admin.</p></div><button id="modalClose" class="icon-btn" type="button">×</button></div><form id="workForm" class="form-grid"><input id="workId" type="hidden"><label class="span2">Judul pekerjaan<input id="title" required></label><label>Equipment<select id="equipmentId" required></select></label><label>PIC<input id="pic" required></label><label>Jenis<select id="type" required><option>Preventive Maintenance</option><option>Condition Monitoring</option><option>Corrective Maintenance</option><option>Others</option></select></label><label>Prioritas<select id="priority"><option>Low</option><option selected>Medium</option><option>High</option><option>Critical</option></select></label><label>Tanggal rencana<input id="dueDate" type="date"></label><label>Status<select id="status"><option>Open</option><option>Proses</option><option>Selesai</option></select></label><label class="span2">Deskripsi<textarea id="description" rows="5"></textarea></label><label>Foto sebelum<input id="beforePhoto" type="file" accept="image/jpeg,image/png,image/webp"></label><label>Foto sesudah<input id="afterPhoto" type="file" accept="image/jpeg,image/png,image/webp"></label><div class="span2 modal-actions"><button id="cancelBtn" class="btn ghost" type="button">Batal</button><button class="btn primary" type="submit">Simpan</button></div></form></div></div>
-
-  <!-- Detail read-only semua role -->
-  <div id="detailModal" class="modal hidden"><div class="modal-card detail-card"><div class="modal-head"><div><h2>Detail Pekerjaan</h2><p>Informasi berikut hanya dapat dilihat.</p></div><button id="detailModalClose" class="icon-btn" type="button">×</button></div><div class="detail-grid"><div class="detail-item span2"><small>Judul pekerjaan</small><strong id="detailTitle">-</strong></div><div class="detail-item"><small>Equipment</small><strong id="detailEquipment">-</strong></div><div class="detail-item"><small>PIC</small><strong id="detailPic">-</strong></div><div class="detail-item"><small>Jenis</small><strong id="detailType">-</strong></div><div class="detail-item"><small>Prioritas</small><strong id="detailPriority">-</strong></div><div class="detail-item"><small>Tanggal rencana</small><strong id="detailDueDate">-</strong></div><div class="detail-item"><small>Status</small><strong id="detailStatus">-</strong></div><div class="detail-item span2"><small>Deskripsi</small><p id="detailDescription">-</p></div><div class="detail-item"><small>Foto sebelum</small><div id="detailBeforePhoto" class="detail-photo-box">Belum tersedia</div></div><div class="detail-item"><small>Foto sesudah</small><div id="detailAfterPhoto" class="detail-photo-box">Belum tersedia</div></div></div><div class="modal-actions"><button id="detailCloseButton" class="btn ghost" type="button">Tutup</button></div></div></div>
-
-  <!-- Upload foto teknisi saja -->
-  <div id="technicianPhotoModal" class="modal hidden"><div class="modal-card technician-card"><div class="modal-head"><div><h2>Tambahkan Foto Pekerjaan</h2><p>Foto wajib dilampirkan untuk menyelesaikan pekerjaan.</p></div><button id="technicianPhotoClose" class="icon-btn" type="button">×</button></div><div class="work-summary"><small>Pekerjaan</small><strong id="technicianWorkTitle">-</strong><small>Equipment</small><strong id="technicianEquipment">-</strong></div><form id="technicianPhotoForm"><input id="technicianWorkId" type="hidden"><label>Foto sesudah pekerjaan<input id="technicianAfterPhoto" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" required></label><div id="technicianPhotoPreview" class="photo-preview hidden"><img id="technicianPreviewImage" alt="Pratinjau foto"></div><div class="info-box">Setelah foto tersimpan, status otomatis menjadi Selesai dan menunggu verifikasi user.</div><div class="modal-actions"><button id="technicianPhotoCancel" class="btn ghost" type="button">Batal</button><button id="technicianPhotoSave" class="btn primary" type="submit">Upload Foto &amp; Selesaikan</button></div></form></div></div>
-
-  <!-- Paraf user/admin -->
-  <div id="signatureModal" class="modal hidden"><div class="modal-card signature-card"><div class="modal-head"><div><h2>Paraf Verifikasi</h2><p>Gambar paraf, lalu simpan verifikasi.</p></div><button class="icon-btn" data-close-sign type="button">×</button></div><canvas id="signatureCanvas" width="700" height="260"></canvas><div class="modal-actions"><button id="clearSignature" class="btn ghost" type="button">Hapus</button><button id="saveSignature" class="btn primary" type="button">Simpan &amp; Verifikasi</button></div></div></div>
-
-  <div id="toast" class="toast" aria-live="polite"></div>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
-  <script src="config.js"></script>
-  <script src="app.js"></script>
-</body>
-</html>
+<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reliability PT. Padi Indonesia Maju - Mojokerto</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="styles.css"></head><body>
+<section id="loginView" class="login-view"><div class="login-card glass"><div class="brand"><div class="brand-mark"><i data-lucide="activity"></i></div><div><strong>Reliability</strong><small>PT. Padi Indonesia Maju - Mojokerto</small></div></div><div class="login-title"><span>SECURE WORKSPACE</span><h1>Selamat datang</h1><p>Masuk untuk mengelola pekerjaan reliability.</p></div><form id="loginForm"><label>Email<input id="loginEmail" type="email" placeholder="nama@perusahaan.com" required></label><label>Kata sandi<input id="loginPassword" type="password" placeholder="••••••••" required></label><button id="loginButton" class="btn primary wide" type="submit"><i data-lucide="log-in"></i>Masuk</button></form><p id="loginMsg" class="form-msg"></p></div></section>
+<div id="appView" class="app hidden"><aside class="sidebar"><div class="brand side-brand"><div class="brand-mark"><i data-lucide="activity"></i></div><div><strong>Reliability</strong><small>PT. PIM Mojokerto</small></div></div><nav id="nav"><button class="active" data-page="dashboard"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></button><button data-page="works"><i data-lucide="clipboard-check"></i><span>Pekerjaan</span></button><button data-page="manage" data-admin><i data-lucide="database"></i><span>Master Data</span></button><button data-page="users" data-admin><i data-lucide="users"></i><span>Pengguna</span></button></nav><div class="user-box"><div class="avatar"><i data-lucide="user"></i></div><div><strong id="userName">Pengguna</strong><small id="userRole">-</small></div><button id="logoutBtn" title="Keluar"><i data-lucide="log-out"></i></button></div></aside>
+<main><header class="topbar"><div><p class="eyebrow">MAINTENANCE CONTROL CENTER</p><h1 id="pageTitle">Dashboard</h1><p id="today" class="muted"></p></div><div class="actions"><button id="emailBtn" class="btn violet" data-admin><i data-lucide="send"></i>Kirim XLSX</button><button id="exportBtn" class="btn primary"><i data-lucide="file-spreadsheet"></i>Export XLSX</button></div></header>
+<section id="dashboardPage" class="page"><div class="kpi-grid"><article class="kpi total"><div class="kpi-icon"><i data-lucide="layers-3"></i></div><span>Total</span><strong id="kpiTotal">0</strong><small>Semua pekerjaan</small></article><article class="kpi open"><div class="kpi-icon"><i data-lucide="circle-alert"></i></div><span>Open</span><strong id="kpiOpen">0</strong><small>Belum dimulai</small></article><article class="kpi process"><div class="kpi-icon"><i data-lucide="loader-circle"></i></div><span>Proses</span><strong id="kpiProcess">0</strong><small>Sedang dikerjakan</small></article><article class="kpi done"><div class="kpi-icon"><i data-lucide="badge-check"></i></div><span>Selesai</span><strong id="kpiDone">0</strong><small>Sudah diverifikasi</small></article></div><div class="panel"><div class="panel-head"><div><p class="eyebrow">LIVE ACTIVITY</p><h2>Pekerjaan terbaru</h2></div><button class="btn ghost" data-goto="works">Lihat semua<i data-lucide="arrow-right"></i></button></div><div id="recentList" class="recent-list"></div></div></section>
+<section id="worksPage" class="page hidden"><div class="panel toolbar"><div class="search"><i data-lucide="search"></i><input id="searchInput" placeholder="Cari pekerjaan, equipment, PIC..."></div><select id="statusFilter"><option value="">Semua status</option><option>Open</option><option>Proses</option><option>Selesai</option></select><select id="priorityFilter"><option value="">Semua prioritas</option><option>Low</option><option>Medium</option><option>High</option><option>Critical</option></select><select id="typeFilter"><option value="">Semua jenis</option><option>Preventive Maintenance</option><option>Condition Monitoring</option><option>Corrective Maintenance</option><option>Others</option></select><input id="picFilter" placeholder="PIC"><button id="resetFilter" class="btn ghost"><i data-lucide="rotate-ccw"></i>Reset</button><button id="addBtn" class="btn primary" data-admin><i data-lucide="plus"></i>Tambah</button></div><div class="panel table-wrap"><table><thead><tr><th>No</th><th>Pekerjaan</th><th>Equipment</th><th>Jenis</th><th>Prioritas</th><th>PIC</th><th>Status</th><th>Foto</th><th>Verifikasi</th><th>Aksi</th></tr></thead><tbody id="workTable"></tbody></table></div></section>
+<section id="managePage" class="page hidden"><div class="panel"><div class="panel-head"><h2>Master Equipment</h2><button id="masterAddBtn" class="btn primary"><i data-lucide="plus"></i>Equipment</button></div><div class="table-wrap"><table><thead><tr><th>Equipment</th><th>Plant</th><th>Code Number</th><th>Funloc</th><th>Aksi</th></tr></thead><tbody id="masterTable"></tbody></table></div></div></section>
+<section id="usersPage" class="page hidden"><div class="panel"><div class="panel-head"><h2>Kelola Pengguna</h2><button id="userAddBtn" class="btn primary"><i data-lucide="user-plus"></i>Undang</button></div><div class="table-wrap"><table><thead><tr><th>Nama</th><th>Email</th><th>Role</th><th>Status</th></tr></thead><tbody id="userTable"></tbody></table></div></div></section></main></div>
+<div id="workModal" class="modal hidden"><div class="modal-card modal-large"><div class="modal-head"><div><p class="eyebrow">WORK ORDER</p><h2 id="workModalTitle">Tambah Pekerjaan</h2></div><button data-close="workModal" class="icon-btn">×</button></div><form id="workForm" class="form-grid"><input id="workId" type="hidden"><label class="span2">Judul<input id="title" required></label><label>Equipment<select id="equipmentId" required></select></label><label>PIC<input id="pic" required></label><label>Jenis<select id="type"><option>Preventive Maintenance</option><option>Condition Monitoring</option><option>Corrective Maintenance</option><option>Others</option></select></label><label>Prioritas<select id="priority"><option>Low</option><option selected>Medium</option><option>High</option><option>Critical</option></select></label><label>Tanggal rencana<input id="dueDate" type="date"></label><label>Status<select id="status"><option>Open</option><option>Proses</option><option>Selesai</option></select></label><label class="span2">Deskripsi<textarea id="description" rows="5"></textarea></label><label>Foto sebelum<input id="beforePhoto" type="file" accept="image/*"></label><label>Foto sesudah<input id="afterPhoto" type="file" accept="image/*"></label><div class="span2 modal-actions"><button type="button" class="btn ghost" data-close="workModal">Batal</button><button class="btn primary" type="submit"><i data-lucide="save"></i>Simpan</button></div></form></div></div>
+<div id="detailModal" class="modal hidden"><div class="modal-card modal-large"><div class="modal-head"><div><p class="eyebrow">READ ONLY</p><h2>Detail Pekerjaan</h2></div><button data-close="detailModal" class="icon-btn">×</button></div><div id="detailGrid" class="detail-grid"></div><div class="modal-actions"><button class="btn ghost" data-close="detailModal">Tutup</button></div></div></div>
+<div id="photoModal" class="modal hidden"><div class="modal-card"><div class="modal-head"><div><p class="eyebrow">TECHNICIAN UPDATE</p><h2>Tambahkan Foto Pekerjaan</h2></div><button data-close="photoModal" class="icon-btn">×</button></div><div id="photoWorkInfo" class="work-summary"></div><form id="photoForm"><input id="photoWorkId" type="hidden"><label>Foto sesudah pekerjaan<input id="technicianPhoto" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" required></label><div id="photoPreview" class="photo-preview hidden"><img id="previewImage" alt="Preview"></div><div class="info-box">Foto wajib. Setelah upload berhasil, pekerjaan menjadi Selesai dan menunggu verifikasi user.</div><div class="modal-actions"><button type="button" class="btn ghost" data-close="photoModal">Batal</button><button class="btn primary" type="submit"><i data-lucide="upload-cloud"></i>Upload & Selesaikan</button></div></form></div></div>
+<div id="signatureModal" class="modal hidden"><div class="modal-card"><div class="modal-head"><div><p class="eyebrow">USER VERIFICATION</p><h2>Paraf Verifikasi</h2></div><button data-close="signatureModal" class="icon-btn">×</button></div><canvas id="signatureCanvas" width="700" height="260"></canvas><div class="modal-actions"><button id="clearSignature" class="btn ghost">Hapus</button><button id="saveSignature" class="btn primary">Simpan & Verifikasi</button></div></div></div>
+<div id="toast" class="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script><script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script><script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script><script src="config.js"></script><script src="app.js"></script></body></html>
