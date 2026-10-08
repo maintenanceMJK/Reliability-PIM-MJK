@@ -4,15 +4,15 @@ const esc=v=>String(v??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 function toast(m,e=false){const t=$("#toast");t.textContent=m;t.className="toast show"+(e?" error":"");clearTimeout(toast.t);toast.t=setTimeout(()=>t.className="toast",4000)}
 function monthKey(v){return v?String(v).slice(0,7):"no-date"}function monthLabel(v){if(!v)return"Tanpa Tanggal";const[a,b]=String(v).slice(0,7).split("-");return new Intl.DateTimeFormat("id-ID",{month:"long",year:"numeric"}).format(new Date(+a,+b-1,1))}function photoUrl(p){return p?sb.storage.from(C.PHOTO_BUCKET).getPublicUrl(p).data.publicUrl:null}function isTechnician(){return ["technician","teknisi"].includes(String(profile?.role||"").toLowerCase())}
 async function init(){bind();icons();$("#today").textContent=new Intl.DateTimeFormat("id-ID",{dateStyle:"full"}).format(new Date());$("#kpiYearFilter").value=new Date().getFullYear();const{data}=await sb.auth.getSession();data.session?enter(data.session):showLogin();sb.auth.onAuthStateChange((_,s)=>s?enter(s):showLogin())}
-function bind(){$("#loginForm").onsubmit=login;$("#logoutBtn").onclick=()=>sb.auth.signOut();$$("#nav button").forEach(b=>b.onclick=()=>page(b.dataset.page,b));$$('[data-goto]').forEach(b=>b.onclick=()=>page(b.dataset.goto,$(`[data-page="${b.dataset.goto}"]`)));$$('[data-close]').forEach(b=>b.onclick=()=>$("#"+b.dataset.close).classList.add("hidden"));$("#groupedWorks").onclick=tableAction;$("#addBtn").onclick=()=>openForm();$("#workForm").onsubmit=saveWork;["searchInput","statusFilter","priorityFilter","typeFilter","picFilter","monthFilter"].forEach(id=>$("#"+id).oninput=renderGrouped);$("#resetFilter").onclick=()=>{["searchInput","statusFilter","priorityFilter","typeFilter","picFilter","monthFilter"].forEach(id=>$("#"+id).value="");renderGrouped()};$("#kpiYearFilter").oninput=renderKpiPage}
+function bind(){$("#loginForm").onsubmit=login;$("#logoutBtn").onclick=()=>sb.auth.signOut();$$("#nav button").forEach(b=>b.onclick=()=>page(b.dataset.page,b));$$('[data-goto]').forEach(b=>b.onclick=()=>page(b.dataset.goto,$(`[data-page="${b.dataset.goto}"]`)));$$('[data-close]').forEach(b=>b.onclick=()=>$("#"+b.dataset.close).classList.add("hidden"));$("#groupedWorks").onclick=tableAction;$("#addBtn").onclick=()=>openForm();$("#workForm").onsubmit=saveWork;["searchInput","statusFilter","priorityFilter","typeFilter","picFilter","monthFilter"].forEach(id=>$("#"+id).oninput=renderGrouped);$("#resetFilter").onclick=()=>{["searchInput","statusFilter","priorityFilter","typeFilter","picFilter","monthFilter"].forEach(id=>$("#"+id).value="");renderGrouped()};$("#kpiYearFilter").oninput=renderKpiPage;$("#completeForm").onsubmit=completeWork;$("#completePhoto").onchange=previewCompletePhoto}
 async function login(e){e.preventDefault();const{error}=await sb.auth.signInWithPassword({email:$("#loginEmail").value.trim(),password:$("#loginPassword").value});$("#loginMsg").textContent=error?error.message:""}function showLogin(){$("#loginView").classList.remove("hidden");$("#appView").classList.add("hidden")}
 async function enter(s){session=s;const{data,error}=await sb.from("profiles").select("*").eq("id",s.user.id).single();if(error)return toast(error.message,true);profile=data;$("#loginView").classList.add("hidden");$("#appView").classList.remove("hidden");$("#userName").textContent=data.full_name||s.user.email;$("#userRole").textContent=data.role;$$('[data-admin]').forEach(x=>x.classList.toggle("hidden",data.role!=="admin"));await Promise.all([loadEquipment(),loadWorks()]);icons()}
 function page(n,b){$$(".page").forEach(x=>x.classList.add("hidden"));$("#"+n+"Page").classList.remove("hidden");$$("#nav button").forEach(x=>x.classList.remove("active"));b?.classList.add("active");$("#pageTitle").textContent={dashboard:"Dashboard",kpi:"KPI & Grafik",works:"Pekerjaan",manage:"Master Data"}[n];if(n==="kpi")setTimeout(renderKpiPage,50)}
 async function loadWorks(){const{data,error}=await sb.from("works").select("*,equipment(*)").order("due_date",{ascending:false});if(error)return toast(error.message,true);works=data||[];renderAll()}async function loadEquipment(){const{data}=await sb.from("equipment").select("*").order("name");equipment=data||[];$("#equipmentId").innerHTML='<option value="">Pilih equipment</option>'+equipment.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("");$("#masterTable").innerHTML=equipment.map(x=>`<tr><td>${esc(x.name)}</td><td>${esc(x.plant)}</td><td>${esc(x.code_number)}</td><td>${esc(x.funloc)}</td></tr>`).join("")}
 function renderAll(){$("#kpiTotal").textContent=works.length;$("#kpiOpen").textContent=works.filter(x=>x.status==="Open").length;$("#kpiProcess").textContent=works.filter(x=>x.status==="Proses").length;$("#kpiDone").textContent=works.filter(x=>x.verified_at).length;$("#recentList").innerHTML=works.slice(0,6).map(x=>`<div class="recent-item"><strong>${esc(x.title)}</strong><span>${esc(monthLabel(x.due_date))}</span></div>`).join("");renderGrouped();renderKpiPage()}
 function filtered(){const q=$("#searchInput").value.toLowerCase(),s=$("#statusFilter").value,p=$("#priorityFilter").value,t=$("#typeFilter").value,pic=$("#picFilter").value.toLowerCase(),m=$("#monthFilter").value;return works.filter(x=>[x.title,x.pic,x.equipment?.name].join(" ").toLowerCase().includes(q)&&(!s||x.status===s)&&(!p||x.priority===p)&&(!t||x.work_type===t)&&(!pic||String(x.pic||"").toLowerCase().includes(pic))&&(!m||monthKey(x.due_date)===m))}
-function renderGrouped(){const groups={};filtered().forEach(x=>(groups[monthKey(x.due_date)]??=[]).push(x));const keys=Object.keys(groups).sort((a,b)=>b.localeCompare(a));$("#groupedWorks").innerHTML=keys.map(k=>`<section class="month-group"><div class="month-group-head"><div class="month-group-title"><i data-lucide="calendar-days"></i><strong>${esc(monthLabel(groups[k][0]?.due_date))}</strong></div><span class="month-count">${groups[k].length} pekerjaan</span></div><div class="table-wrap"><table><thead><tr><th>No</th><th>Pekerjaan</th><th>Equipment</th><th>Jenis</th><th>Prioritas</th><th>PIC</th><th>Status</th><th>Foto</th><th>Aksi</th></tr></thead><tbody>${groups[k].map((x,i)=>`<tr><td>${i+1}</td><td><strong>${esc(x.title)}</strong><br><small>${esc(x.description||"")}</small></td><td>${esc(x.equipment?.name||"-")}</td><td>${esc(x.work_type)}</td><td>${esc(x.priority)}</td><td>${esc(x.pic)}</td><td><span class="badge ${x.verified_at?"Terverifikasi":x.status}">${x.verified_at?"Terverifikasi":esc(x.status)}</span></td><td>${[x.before_photo_path,x.after_photo_path].filter(Boolean).map(p=>`<img class="photo" src="${photoUrl(p)}">`).join(" ")}</td><td><div class="action-group"><button class="mini-btn" data-detail="${x.id}"><i data-lucide="eye"></i>Detail</button>${profile.role==="admin"?`<button class="mini-btn" data-edit="${x.id}">Edit</button>`:""}${isTechnician()&&x.status==="Open"?`<button class="mini-btn btn-start" data-start="${x.id}"><i data-lucide="play"></i>Mulai Pekerjaan</button>`:""}</div></td></tr>`).join("")}</tbody></table></div></section>`).join("")||'<div class="panel panel-head">Tidak ada data.</div>';icons()}
-function tableAction(e){const b=e.target.closest("button");if(!b)return;if(b.dataset.detail)detail(b.dataset.detail);else if(b.dataset.edit)openForm(b.dataset.edit);else if(b.dataset.start)startWork(b.dataset.start)}
+function renderGrouped(){const groups={};filtered().forEach(x=>(groups[monthKey(x.due_date)]??=[]).push(x));const keys=Object.keys(groups).sort((a,b)=>b.localeCompare(a));$("#groupedWorks").innerHTML=keys.map(k=>`<section class="month-group"><div class="month-group-head"><div class="month-group-title"><i data-lucide="calendar-days"></i><strong>${esc(monthLabel(groups[k][0]?.due_date))}</strong></div><span class="month-count">${groups[k].length} pekerjaan</span></div><div class="table-wrap"><table><thead><tr><th>No</th><th>Pekerjaan</th><th>Equipment</th><th>Jenis</th><th>Prioritas</th><th>PIC</th><th>Status</th><th>Foto</th><th>Aksi</th></tr></thead><tbody>${groups[k].map((x,i)=>`<tr><td>${i+1}</td><td><strong>${esc(x.title)}</strong><br><small>${esc(x.description||"")}</small></td><td>${esc(x.equipment?.name||"-")}</td><td>${esc(x.work_type)}</td><td>${esc(x.priority)}</td><td>${esc(x.pic)}</td><td><span class="badge ${x.verified_at?"Terverifikasi":x.status}">${x.verified_at?"Terverifikasi":esc(x.status)}</span></td><td>${[x.before_photo_path,x.after_photo_path].filter(Boolean).map(p=>`<img class="photo" src="${photoUrl(p)}">`).join(" ")}</td><td><div class="action-group"><button class="mini-btn" data-detail="${x.id}"><i data-lucide="eye"></i>Detail</button>${profile.role==="admin"?`<button class="mini-btn" data-edit="${x.id}">Edit</button>`:""}${isTechnician()&&x.status==="Open"?`<button class="mini-btn btn-start" data-start="${x.id}"><i data-lucide="play"></i>Mulai Pekerjaan</button>`:""}${isTechnician()&&x.status==="Proses"?`<button class="mini-btn btn-complete" data-complete="${x.id}"><i data-lucide="circle-check-big"></i>Selesaikan Pekerjaan</button>`:""}</div></td></tr>`).join("")}</tbody></table></div></section>`).join("")||'<div class="panel panel-head">Tidak ada data.</div>';icons()}
+function tableAction(e){const b=e.target.closest("button");if(!b)return;if(b.dataset.detail)detail(b.dataset.detail);else if(b.dataset.edit)openForm(b.dataset.edit);else if(b.dataset.start)startWork(b.dataset.start);else if(b.dataset.complete)openCompleteModal(b.dataset.complete)}
 async function startWork(id){
   if(!isTechnician())return toast("Hanya teknisi yang dapat memulai pekerjaan.",true);
   const work=works.find(x=>x.id===id);
@@ -28,6 +28,60 @@ async function startWork(id){
   }catch(error){
     console.error("Mulai pekerjaan gagal:",error);
     toast("Gagal memulai pekerjaan: "+error.message,true);
+  }
+}
+function openCompleteModal(id){
+  if(!isTechnician())return toast("Hanya teknisi yang dapat menyelesaikan pekerjaan.",true);
+  const work=works.find(x=>x.id===id);
+  if(!work)return toast("Pekerjaan tidak ditemukan.",true);
+  if(work.status!=="Proses")return toast("Pekerjaan harus berstatus Proses.",true);
+  $("#completeWorkId").value=id;
+  $("#completeWorkInfo").innerHTML=`<small class="eyebrow">PEKERJAAN</small><h3>${esc(work.title)}</h3><p>${esc(work.equipment?.name||"-")} • ${esc(work.pic||"-")}</p>`;
+  $("#completePhoto").value="";
+  $("#completePreview").classList.add("hidden");
+  $("#completePreviewImage").removeAttribute("src");
+  $("#completeModal").classList.remove("hidden");
+  icons();
+}
+function previewCompletePhoto(event){
+  const file=event.target.files?.[0];
+  if(!file)return;
+  if(!file.type.startsWith("image/")){event.target.value="";return toast("File harus berupa gambar.",true)}
+  const imageUrl=URL.createObjectURL(file);
+  $("#completePreviewImage").src=imageUrl;
+  $("#completePreview").classList.remove("hidden");
+  $("#completePreviewImage").onload=()=>URL.revokeObjectURL(imageUrl);
+}
+async function uploadCompletionPhoto(file,workId){
+  const extension=(file.name.split(".").pop()||"jpg").toLowerCase();
+  const path=`${workId}/after-${Date.now()}.${extension}`;
+  const{error}=await sb.storage.from(C.PHOTO_BUCKET).upload(path,file,{contentType:file.type,upsert:false});
+  if(error)throw error;
+  return path;
+}
+async function completeWork(event){
+  event.preventDefault();
+  const button=$("#completeSubmitBtn");
+  const workId=$("#completeWorkId").value;
+  const file=$("#completePhoto").files?.[0];
+  if(!file)return toast("Foto sesudah pekerjaan wajib dipilih.",true);
+  button.disabled=true;
+  const original=button.innerHTML;
+  button.textContent="Menyelesaikan...";
+  try{
+    const photoPath=await uploadCompletionPhoto(file,workId);
+    const{error}=await sb.rpc("technician_complete_work",{p_work_id:workId,p_after_photo_path:photoPath});
+    if(error)throw error;
+    $("#completeModal").classList.add("hidden");
+    toast("Pekerjaan selesai dan menunggu verifikasi user.");
+    await loadWorks();
+  }catch(error){
+    console.error("Selesaikan pekerjaan gagal:",error);
+    toast("Gagal menyelesaikan pekerjaan: "+error.message,true);
+  }finally{
+    button.disabled=false;
+    button.innerHTML=original;
+    icons();
   }
 }
 function detail(id){const x=works.find(w=>w.id===id),item=(a,b,c="")=>`<div class="detail-item ${c}"><small>${a}</small><strong>${esc(b||"-")}</strong></div>`,img=p=>p?`<img class="detail-photo" src="${photoUrl(p)}">`:"Belum tersedia";$("#detailGrid").innerHTML=item("Pekerjaan",x.title,"span2")+item("Equipment",x.equipment?.name)+item("PIC",x.pic)+`<div class="detail-item"><small>Bulan</small><div class="month-detail"><i data-lucide="calendar-days"></i><strong>${esc(monthLabel(x.due_date))}</strong></div></div>`+item("Tanggal Rencana",x.due_date)+item("Jenis",x.work_type)+item("Prioritas",x.priority)+item("Status",x.verified_at?"Terverifikasi":x.status)+`<div class="detail-item span2"><small>Deskripsi</small><p>${esc(x.description||"-")}</p></div><div class="detail-item">${img(x.before_photo_path)}</div><div class="detail-item">${img(x.after_photo_path)}</div>`;$("#detailModal").classList.remove("hidden");icons()}
