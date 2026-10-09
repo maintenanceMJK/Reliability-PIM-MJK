@@ -76,6 +76,7 @@
         <button class="active" data-page="dashboard" type="button">
           <i data-lucide="layout-dashboard"></i><span>Dashboard</span>
         </button>
+        <button data-page="kpi" type="button"><i data-lucide="chart-pie"></i><span>KPI Bulanan</span></button>
         <button data-page="works" type="button">
           <i data-lucide="clipboard-check"></i><span>Pekerjaan</span>
         </button>
@@ -147,6 +148,7 @@
         </div>
       </section>
 
+      <section id="kpiPage" class="page hidden"><div class="panel kpi-filter-panel"><div><span class="eyebrow">KPI BULANAN</span><h2>Ringkasan Pekerjaan</h2></div><label>Pilih bulan<input id="kpiMonth" type="month"></label></div><div class="kpi-grid"><article class="kpi-card kpi-total"><span>Total</span><strong id="monthTotal">0</strong><small>Pekerjaan bulan terpilih</small></article><article class="kpi-card kpi-open"><span>Open</span><strong id="monthOpen">0</strong><small>Belum dimulai</small></article><article class="kpi-card kpi-process"><span>Proses</span><strong id="monthProcess">0</strong><small>Sedang dikerjakan</small></article><article class="kpi-card kpi-done"><span>Selesai</span><strong id="monthDone">0</strong><small>Selesai / terverifikasi</small></article></div><div class="panel chart-card"><div class="panel-header"><div><span class="eyebrow">TIPE PEKERJAAN</span><h2>Grafik Bulat Pekerjaan</h2></div></div><div class="chart-wrap"><canvas id="workTypeChart"></canvas></div></div></section>
       <section id="worksPage" class="page hidden">
         <div class="panel toolbar">
           <div class="search-box">
@@ -157,7 +159,9 @@
           <select id="priorityFilter"><option value="">Semua prioritas</option><option>Low</option><option>Medium</option><option>High</option><option>Critical</option></select>
           <select id="typeFilter"><option value="">Semua jenis</option><option>Preventive Maintenance</option><option>Condition Monitoring</option><option>Corrective Maintenance</option><option>Others</option></select>
           <input id="picFilter" placeholder="Filter PIC">
+          <input id="dateFilter" type="date" title="Filter tanggal rencana">
           <button id="resetFilter" class="btn btn-ghost" type="button"><i data-lucide="rotate-ccw"></i><span>Reset</span></button>
+          <button id="downloadWorksTemplateBtn" class="btn btn-ghost" data-admin type="button"><i data-lucide="download"></i><span>Template Pekerjaan</span></button>
           <button id="importWorksBtn" class="btn btn-secondary" data-admin type="button"><i data-lucide="file-up"></i><span>Mass Upload</span></button>
             <input id="importWorksFile" type="file" accept=".xlsx,.xls" hidden>
             <button id="addBtn" class="btn btn-primary" data-admin type="button"><i data-lucide="plus"></i><span>Tambah</span></button>
@@ -165,7 +169,7 @@
 
         <div class="panel table-container">
           <table>
-            <thead><tr><th>No</th><th>Pekerjaan</th><th>Equipment</th><th>Jenis</th><th>Prioritas</th><th>PIC</th><th>Status</th><th>Foto</th><th>Verifikasi</th><th>Aksi</th></tr></thead>
+            <thead><tr><th>No</th><th>Pekerjaan</th><th>Tanggal</th><th>Equipment</th><th>Jenis</th><th>Prioritas</th><th>PIC</th><th>Status</th><th>Foto</th><th>Verifikasi</th><th>Aksi</th></tr></thead>
             <tbody id="workTable"></tbody>
           </table>
         </div>
@@ -173,7 +177,7 @@
 
       <section id="managePage" class="page hidden">
         <div class="panel">
-          <div class="panel-header"><h2>Master Equipment</h2><button id="importEquipmentBtn" class="btn btn-secondary" type="button"><i data-lucide="file-up"></i>Mass Upload Equipment</button><input id="importEquipmentFile" type="file" accept=".xlsx,.xls" hidden><button id="masterAddBtn" class="btn btn-primary"><i data-lucide="plus"></i>Equipment</button></div>
+          <div class="panel-header"><h2>Master Equipment</h2><div class="panel-actions"><button id="downloadEquipmentTemplateBtn" class="btn btn-ghost" type="button"><i data-lucide="download"></i>Template Equipment</button><button id="importEquipmentBtn" class="btn btn-secondary" type="button"><i data-lucide="file-up"></i>Mass Upload Equipment</button><input id="importEquipmentFile" type="file" accept=".xlsx,.xls" hidden><button id="masterAddBtn" class="btn btn-primary"><i data-lucide="plus"></i>Equipment</button></div></div>
           <div class="table-container"><table><thead><tr><th>Equipment</th><th>Plant</th><th>Code Number</th><th>Funloc</th><th>Aksi</th></tr></thead><tbody id="masterTable"></tbody></table></div>
         </div>
       </section>
@@ -207,6 +211,7 @@
     </div>
   </div>
 
+  <div id="equipmentModal" class="modal hidden"><div class="modal-card modal-large"><div class="modal-header"><div><span class="eyebrow">MASTER DATA</span><h2 id="equipmentModalTitle">Tambah Equipment</h2></div><button class="icon-button" data-close="equipmentModal">×</button></div><form id="equipmentForm" class="form-grid"><input id="equipmentEditId" type="hidden"><label class="span-two">Nama Equipment<input id="equipmentName" required></label><label>Plant<input id="equipmentPlant"></label><label>Code Number<input id="equipmentCode"></label><label class="span-two">Functional Location<input id="equipmentFunloc"></label><div class="span-two modal-actions"><button class="btn btn-ghost" data-close="equipmentModal" type="button">Batal</button><button class="btn btn-primary" type="submit">Simpan</button></div></form></div></div>
   <div id="detailModal" class="modal hidden"><div class="modal-card modal-large"><div class="modal-header"><div><span class="eyebrow">READ ONLY</span><h2>Detail Pekerjaan</h2></div><button class="icon-button" data-close="detailModal">×</button></div><div id="detailGrid" class="detail-grid"></div><div class="modal-actions"><button class="btn btn-ghost" data-close="detailModal">Tutup</button></div></div></div>
 
   <div id="photoModal" class="modal hidden"><div class="modal-card"><div class="modal-header"><div><span class="eyebrow">TECHNICIAN UPDATE</span><h2>Tambahkan Foto</h2></div><button class="icon-button" data-close="photoModal">×</button></div><div id="photoWorkInfo" class="work-summary"></div><form id="photoForm"><input id="photoWorkId" type="hidden"><label>Foto sesudah<input id="technicianPhoto" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" required></label><div id="photoPreview" class="photo-preview hidden"><img id="previewImage" alt="Pratinjau foto"></div><div class="info-box">Setelah foto berhasil diunggah, status menjadi Selesai dan menunggu verifikasi user.</div><div class="modal-actions"><button class="btn btn-ghost" data-close="photoModal" type="button">Batal</button><button class="btn btn-primary" type="submit"><i data-lucide="upload-cloud"></i>Upload & Selesaikan</button></div></form></div></div>
