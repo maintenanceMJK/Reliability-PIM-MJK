@@ -97,3 +97,8 @@
 
 /* Permanent work and storage deletion */
 #deletePreviewSummary:has(+ #deletePreviewList .preview-row){border-color:#fb718544;background:#8813372b}.preview-row small{line-height:1.5}#confirmDeletePreviewBtn{box-shadow:0 10px 24px #be123c44}
+
+/* Mass verification eligibility fix */
+#worksTableView.mass-verify-mode td.verification-ineligible{display:none!important}
+#worksTableView.mass-verify-mode td.verification-eligible{display:table-cell!important}
+#worksTableView.mass-verify-mode th.mass-delete-col{display:table-cell!important}
