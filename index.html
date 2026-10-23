@@ -160,7 +160,7 @@
           </section>
           <aside class="dashboard-side-stack">
             <section class="panel attention-card overdue"><div class="attention-head"><i data-lucide="clock-alert"></i><div><small>PERLU PERHATIAN</small><strong>Overdue Task</strong></div></div><div class="attention-value"><strong id="dashboardOverdue">0</strong><span>task melewati deadline</span></div><button class="attention-link" data-goto="tracker" type="button">Buka Task Tracker <i data-lucide="arrow-up-right"></i></button></section>
-            <section class="panel attention-card upcoming"><div class="attention-head"><i data-lucide="calendar-clock"></i><div><small>14 HARI KE DEPAN</small><strong>Upcoming Deadline</strong></div></div><div class="attention-value"><strong id="dashboardUpcoming">0</strong><span>task mendekati deadline</span></div><button class="attention-link" data-goto="tracker" type="button">Lihat deadline <i data-lucide="arrow-up-right"></i></button></section>
+            <section class="panel attention-card upcoming"><div class="attention-head"><i data-lucide="calendar-clock"></i><div><small>30 HARI KE DEPAN</small><strong>Upcoming Deadline</strong></div></div><div class="attention-value"><strong id="dashboardUpcoming">0</strong><span>task mendekati deadline</span></div><button class="attention-link" data-goto="tracker" type="button">Lihat deadline <i data-lucide="arrow-up-right"></i></button></section>
             <section class="panel online-users-card">
               <div class="online-users-head"><div class="online-pulse"><span></span><i data-lucide="users-round"></i></div><div><small>REALTIME PRESENCE</small><strong>Pengguna Online</strong></div><b id="onlineUserCount">0</b></div>
               <div id="onlineUsersList" class="online-users-list"><p class="online-empty">Menunggu koneksi realtime...</p></div>
@@ -200,7 +200,7 @@
           <div><span class="eyebrow">TASK TRACKER</span><h2>Monitoring Deadline Task</h2></div>
           <div class="tracker-controls">
             <label>Filter PIC<select id="trackerPicFilter"><option value="">Semua PIC</option></select></label>
-            <label>Upcoming<input id="trackerUpcomingDays" type="number" min="1" max="90" value="14"></label>
+            <label>Upcoming<input id="trackerUpcomingDays" type="number" min="1" max="90" value="30"></label>
             <button id="refreshTrackerBtn" class="btn btn-secondary" type="button"><i data-lucide="refresh-cw"></i>Refresh</button>
           </div>
         </div>
@@ -214,7 +214,7 @@
               <article class="compact-stat upcoming"><i data-lucide="calendar-clock"></i><div><small>Upcoming</small><strong id="trackerUpcoming">0</strong></div></article>
               <article class="compact-stat complete"><i data-lucide="circle-check-big"></i><div><small>Completion</small><strong id="trackerCompletion">0%</strong></div></article>
             </div>
-            <div class="summary-caption"><span id="trackerCompletedCount">0 task selesai</span><span id="trackerUpcomingLabel">Deadline 14 hari ke depan</span></div>
+            <div class="summary-caption"><span id="trackerCompletedCount">0 task selesai</span><span id="trackerUpcomingLabel">Deadline 30 hari ke depan</span></div>
           </section>
 
           <section class="panel tracker-top-card">
