@@ -325,7 +325,7 @@
         <label>Prioritas<select id="priority"><option>Low</option><option selected>Medium</option><option>High</option><option>Critical</option></select></label>
         <label>Tanggal rencana <span class="required-mark">*</span><input id="dueDate" type="date" required></label>
         <label>Status<select id="status"><option>Open</option><option>Proses</option><option>Selesai</option></select></label>
-        <label class="span-two">Deskripsi<textarea id="description" rows="5"></textarea></label>
+        <section class="span-two admin-task-editor"><div class="admin-task-editor-head"><div><span class="eyebrow">TASKLIST PEKERJAAN</span><h3>Edit Tasklist</h3><p>Admin dapat menambah, mengubah, mengurutkan, atau menghapus task.</p></div><button id="addAdminTaskBtn" class="btn btn-secondary" type="button"><i data-lucide="plus"></i>Tambah Task</button></div><div id="adminTaskList" class="admin-task-list"></div><textarea id="description" class="admin-task-source" rows="5" aria-label="Sumber tasklist"></textarea><small class="admin-task-hint">Task disimpan pada kolom deskripsi agar tetap kompatibel dengan Excel dan data lama.</small></section>
         <label>Kondisi temuan<select id="adminFindingCondition"><option value="">Belum diisi</option><option value="OK">Kondisi OK</option><option value="NOT_OK">Kondisi Tidak OK</option></select></label>
         <label id="adminFindingDetailWrap" class="span-two hidden">Detail temuan<textarea id="adminFindingDetail" rows="4" placeholder="Isi temuan, komponen terkait, dan tindakan lanjutan"></textarea></label>
         <label>Foto sebelum<input id="beforePhoto" type="file" accept="image/*"></label>
